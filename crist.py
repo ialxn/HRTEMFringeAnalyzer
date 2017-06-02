@@ -12,6 +12,22 @@ from scipy.misc import imread
 
 #def analyze_ring(s, d_r, d_phi):
 
+def direction(s):
+
+    N = 36
+    direct = np.zeros(N)
+    for x in range(s.shape[0]):
+        for y in range(s.shape[1]):
+            if np.isclose(s[x][y],0.0):
+                continue
+            phi = np.arctan2(y-s.shape[1]//2,x-s.shape[0]//2)
+            idx =int(np.floor(phi / np.pi) * (N-1))
+            direct[idx] = s[x][y]
+
+    phi_max = np.argmax(direct) * 2.0 * np.pi
+    return phi_max
+
+
 
 
 def analyze(im, r_min, r_max, fft_size, step):
@@ -21,7 +37,7 @@ def analyze(im, r_min, r_max, fft_size, step):
     FFT_SIZE2 = fft_size//2
 
     c = np.zeros([(im.shape[0]-fft_size)//step+1, (im.shape[1]-fft_size)//step+1])
-    #d = np.zeros([(im.shape[0]-fft_size)//step+1, (im.shape[1]-fft_size)//step+1])
+    d = np.zeros([(im.shape[0]-fft_size)//step+1, (im.shape[1]-fft_size)//step+1])
 
     for ri, i in enumerate(range(FFT_SIZE2, im.shape[0]-FFT_SIZE2, step)):
         for rj, j in enumerate(range(FFT_SIZE2, im.shape[1]-FFT_SIZE2, step)):
@@ -40,17 +56,17 @@ def analyze(im, r_min, r_max, fft_size, step):
             spec[mask] = 0
 
             c[ri][rj] = spec.sum()/total
-#            d[ri][rj] = analyze_ring(spec, r_max-r_min, 10)
+            d[ri][rj] = direction(spec)
+    return c, d
 
-    return c
-
-data=imread('1.tif')
 FFT_SIZE = 64
 R_MIN = 10
+data=imread('../1.tif')
 R_MAX = 20
 STEP = 64
 
-crist = analyze(data, R_MIN, R_MAX, FFT_SIZE, STEP)
+crist, directions = analyze(data, R_MIN, R_MAX, FFT_SIZE, STEP)
 
 plt.imshow(crist)
+plt.imshow(directions)
 
