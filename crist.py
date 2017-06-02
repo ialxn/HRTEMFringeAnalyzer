@@ -30,6 +30,22 @@ def direction(s):
     phi_max = np.argmax(direct) * 2.0 * np.pi
     return phi_max
 
+def radius(s,r_min, r_max):
+
+    N = 11
+    F = (r_min - r_max) / N
+    array = np.zeros(N)
+
+    for x in range(s.shape[0]):
+        for y in range(s.shape[1]):
+            if np.isclose(s[x][y], 0.0):
+                continue
+            r = np.sqrt(x*x + y*y) + r_min
+            idx = np.floor(r * F)
+            array[idx] += s[x][y]
+
+
+
 
 def analyze(im, r_min, r_max, fft_size, step):
 
