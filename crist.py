@@ -15,19 +15,20 @@ from scipy.misc import imread
 def direction(s):
 
     N = 36
+    DX = s.shape[0]//2
+    DY = s.shape[1]//2
+    F = (N-1) / np.pi
     direct = np.zeros(N)
     for x in range(s.shape[0]):
         for y in range(s.shape[1]):
-            if np.isclose(s[x][y],0.0):
+            if np.isclose(s[x][y], 0.0):
                 continue
-            phi = np.arctan2(y-s.shape[1]//2,x-s.shape[0]//2)
-            idx =int(np.floor(phi / np.pi) * (N-1))
+            phi = np.arctan2(y-DY, x-DX)
+            idx = int(np.floor(phi * F))
             direct[idx] = s[x][y]
 
     phi_max = np.argmax(direct) * 2.0 * np.pi
     return phi_max
-
-
 
 
 def analyze(im, r_min, r_max, fft_size, step):
@@ -36,26 +37,34 @@ def analyze(im, r_min, r_max, fft_size, step):
     R_MAX2 = r_max**2
     FFT_SIZE2 = fft_size//2
 
-    c = np.zeros([(im.shape[0]-fft_size)//step+1, (im.shape[1]-fft_size)//step+1])
-    d = np.zeros([(im.shape[0]-fft_size)//step+1, (im.shape[1]-fft_size)//step+1])
+    c = np.zeros([(im.shape[0] - fft_size) // step + 1,
+                  (im.shape[1] - fft_size) // step + 1])
+    d = np.zeros([(im.shape[0] - fft_size) // step + 1,
+                  (im.shape[1] - fft_size) // step+ 1])
 
-    for ri, i in enumerate(range(FFT_SIZE2, im.shape[0]-FFT_SIZE2, step)):
-        for rj, j in enumerate(range(FFT_SIZE2, im.shape[1]-FFT_SIZE2, step)):
+    for ri, i in enumerate(range(FFT_SIZE2,
+                                 im.shape[0] - FFT_SIZE2,
+                                 step)):
+        for rj, j in enumerate(range(FFT_SIZE2,
+                                     im.shape[1] - FFT_SIZE2,
+                                     step)):
 
-            roi = im[i-FFT_SIZE2:i+FFT_SIZE2, j-FFT_SIZE2:j+FFT_SIZE2]
+            roi = im[i-FFT_SIZE2 : i+FFT_SIZE2,
+                     j-FFT_SIZE2 : j+FFT_SIZE2]
             spec = fftshift(np.abs(fft2(roi-roi.mean())))
-            total=spec.sum()
+            total = spec.sum()
             #
             # select pixels that are between 40 and 50 pixels away
             # from center of spec at (FFT_SIZE2, FFT_SIZE2) i.e. set
             # other pixels to zero.
             #
             # R_MIN^2 < (i-FFT_SIZE2)^2 + (i-FFT_SIZE2)^2 < R_MAX^2
-            x, y = np.ogrid[-FFT_SIZE2:FFT_SIZE2, -FFT_SIZE2:FFT_SIZE2]
+            x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
+                            -FFT_SIZE2 : FFT_SIZE2]
             mask = ~((x*x + y*y > R_MIN2) & (x*x + y*y < R_MAX2))
             spec[mask] = 0
 
-            c[ri][rj] = spec.sum()/total
+            c[ri][rj] = spec.sum() / total
             d[ri][rj] = direction(spec)
     return c, d
 
