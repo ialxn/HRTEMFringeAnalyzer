@@ -61,7 +61,7 @@ def analyze(im, r_min, r_max, fft_size, step):
 
 FFT_SIZE = 64
 R_MIN = 10
-data=imread('../1.tif')
+data = imread('../1.tif')
 R_MAX = 20
 STEP = 64
 
@@ -69,4 +69,3 @@ crist, directions = analyze(data, R_MIN, R_MAX, FFT_SIZE, STEP)
 
 plt.imshow(crist)
 plt.imshow(directions)
-
