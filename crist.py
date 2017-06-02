@@ -25,7 +25,7 @@ def direction(s):
                 continue
             phi = np.arctan2(y-DY, x-DX)
             idx = int(np.floor(phi * F))
-            direct[idx] = s[x][y]
+            direct[idx] += s[x][y]
 
     phi_max = np.argmax(direct) * 2.0 * np.pi
     return phi_max
