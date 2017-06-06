@@ -12,23 +12,24 @@ from scipy.misc import imread
 
 #def analyze_ring(s, d_r, d_phi):
 
-def direction(s):
+def analyze_direction(s):
+    """
+    """
+    FFT_SIZE2 = s.shape[0]//2
+    N_BINS = 36
+    DELTA_PHI = 2.0 * np.pi / N_BINS
+    x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
+                    -FFT_SIZE2 : FFT_SIZE2]
 
-    N = 36
-    DX = s.shape[0]//2
-    DY = s.shape[1]//2
-    F = (N-1) / np.pi
-    direct = np.zeros(N)
-    for x in range(s.shape[0]):
-        for y in range(s.shape[1]):
-            if np.isclose(s[x][y], 0.0):
-                continue
-            phi = np.arctan2(y-DY, x-DX)
-            idx = int(np.floor(phi * F))
-            direct[idx] += s[x][y]
+    phi = np.arctan2(y, x)
+    d, _ = np.histogram(phi.flatten(), bins=N_BINS, weights=s.flatten())
+    idx_d = d.argmax()
+    phi_max = -np.pi + idx_d * DELTA_PHI
+    #TODO: calculate delta_phi (FWHH)
+    delta_phi = 0
 
-    phi_max = np.argmax(direct) * 2.0 * np.pi
-    return phi_max
+    return phi_max, delta_phi
+
 
 def determine_lattice_const(s, r_min, r_max, n_r):
     """Determine lattice constant and coherence lenght from FFT. All calculations
@@ -89,6 +90,10 @@ def analyze(im, r_min, r_max, fft_size, step):
                   (im.shape[1] - fft_size) // step + 1])
     delta_d = np.zeros([(im.shape[0] - fft_size) // step + 1,
                         (im.shape[1] - fft_size) // step+ 1])
+    phi = np.zeros([(im.shape[0] - fft_size) // step + 1,
+                    (im.shape[1] - fft_size) // step + 1])
+    delta_phi = np.zeros([(im.shape[0] - fft_size) // step + 1,
+                          (im.shape[1] - fft_size) // step+ 1])
 
     for ri, i in enumerate(range(FFT_SIZE2,
                                  im.shape[0] - FFT_SIZE2,
@@ -116,8 +121,9 @@ def analyze(im, r_min, r_max, fft_size, step):
             # only pixels between ``r_min`` and ``r_max`` are non-zero
 
             d[ri][rj], delta_d[ri][rj] = determine_lattice_const(spec, r_min, r_max, 11)
+            phi[ri][rj], delta_phi[ri][rj] = analyze_direction(spec)
 
-    return d, delta_d
+    return d, delta_d, phi, delta_phi
 
 FFT_SIZE = 64
 R_MIN = 10
@@ -125,7 +131,7 @@ data = imread('../1.tif')
 R_MAX = 20
 STEP = 64
 
-crist, directions = analyze(data, R_MIN, R_MAX, FFT_SIZE, STEP)
+crist, coherence, direction, spread = analyze(data, R_MIN, R_MAX, FFT_SIZE, STEP)
 
 plt.imshow(crist)
 plt.imshow(directions)
