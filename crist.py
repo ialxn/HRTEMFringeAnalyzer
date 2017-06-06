@@ -136,6 +136,12 @@ def analyze(im, r_min, r_max, fft_size, step):
     return d, delta_d, phi, delta_phi
 
 
+def sub_imageplot(data, ax, title):
+    im = ax.imshow(data)
+    ax.set_title(title)
+    ax.xaxis.set_visible(False)
+    ax.yaxis.set_visible(False)
+
 if __name__ == '__main__':
     from argparse import ArgumentParser
 
@@ -165,15 +171,12 @@ if __name__ == '__main__':
     data = imread(args.file)
     d_value, coherence, direction, spread = analyze(data, args.r_min, args.r_max, args.FFT_size, args.step)
 
-    fig, axarr = plt.subplots(2, 2)
-    axarr[0, 0].imshow(d_value)
-    axarr[0, 0].set_title('d_values')
-    axarr[0, 1].imshow(coherence)
-    axarr[0, 1].set_title('coherence')
-    axarr[1, 0].imshow(direction)
-    axarr[1, 0].set_title('direction')
-    axarr[1, 1].imshow(spread)
-    axarr[1, 1].set_title('spread')
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+    sub_imageplot(d_value, ax1, 'd_values')
+    sub_imageplot(coherence, ax2, 'coherence')
+    sub_imageplot(direction, ax3, 'direction')
+    sub_imageplot(spread, ax4, 'spread')
+
     plt.tight_layout()
 
     if args.output is None:
