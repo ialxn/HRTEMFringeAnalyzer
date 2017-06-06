@@ -13,7 +13,17 @@ from scipy.misc import imread
 #def analyze_ring(s, d_r, d_phi):
 
 def analyze_direction(s):
-    """
+    """Determine direction of periodicy in image ``s``
+
+    Parameters:
+        s : np.array
+            2D Fourier transform
+
+    Returns
+        phi_max : float
+            predominant direction of periodicity
+        delta_phi : float
+            FWHH of `phi_max``
     """
     FFT_SIZE2 = s.shape[0]//2
     N_BINS = 36
