@@ -46,7 +46,7 @@ def determine_lattice_const(s, r_min, r_max, n_r):
     FFT_SIZE2 = s.shape[0]//2
 
     # set number of bins to ensure that ``n_r`` bins cover ``r_min`` - ``r_max``
-    N_BINS = int(np.ceil(np.sqrt(2)*FFT_SIZE2*n_r / (r_max - r_min)))
+    N_BINS = int(np.ceil(np.sqrt(2.0) * FFT_SIZE2 * n_r / (r_max - r_min)))
     # ``x, y`` are pixel indices relative to origin (cetner) of ``spec``
     x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
                     -FFT_SIZE2 : FFT_SIZE2]
