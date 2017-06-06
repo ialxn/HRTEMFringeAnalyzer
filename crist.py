@@ -136,8 +136,21 @@ def analyze(im, r_min, r_max, fft_size, step):
     return d, delta_d, phi, delta_phi
 
 
-def sub_imageplot(data, ax, title):
-    im = ax.imshow(data)
+def sub_imageplot(data, ax, title, vmin, vmax):
+    """Plot image ``data`` at axes instance ``ax``. Add title ``title`` and
+    use scale ``vmin`` .. ``vmax``
+    """
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+    im = ax.imshow(data, cmap='bwr', vmin=vmin, vmax=vmax)
+    # Create divider for existing axes instance
+    divider = make_axes_locatable(ax)
+    # Append axes to the right of ax, with 20% width of ax
+    cax = divider.append_axes("right", size="20%", pad=0.05)
+    # Create colorbar in the appended axes
+    # Tick locations can be set with the kwarg `ticks`
+    # and the format of the ticklabels with kwarg `format`
+    cbar = plt.colorbar(im, cax=cax)
     ax.set_title(title)
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
@@ -172,10 +185,10 @@ if __name__ == '__main__':
     d_value, coherence, direction, spread = analyze(data, args.r_min, args.r_max, args.FFT_size, args.step)
 
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-    sub_imageplot(d_value, ax1, 'd_values')
-    sub_imageplot(coherence, ax2, 'coherence')
-    sub_imageplot(direction, ax3, 'direction')
-    sub_imageplot(spread, ax4, 'spread')
+    sub_imageplot(d_value, ax1, 'd_values', 1,2)
+    sub_imageplot(coherence, ax2, 'coherence', 0,1)
+    sub_imageplot(direction, ax3, 'direction',-np.pi, np.pi)
+    sub_imageplot(spread, ax4, 'spread',0,1)
 
     plt.tight_layout()
 
