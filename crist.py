@@ -139,6 +139,9 @@ def analyze(im, r_min, r_max, fft_size, step):
 if __name__ == '__main__':
     from argparse import ArgumentParser
 
+    supported = ','.join(plt.figure().canvas.get_supported_filetypes())
+    plt.close()
+
     parser = ArgumentParser(description='Analyze local cristallinity of data')
     parser.add_argument('-f', '--file', metavar='FILE',
                         type=str, required=True,
@@ -155,11 +158,31 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--step', metavar='S',
                         type=int, default=64,
                         help='Step size (x and y) in pixels of moving window')
+    parser.add_argument('-o', '--output', metavar='FILE', type=str,
+                        help='Output to file. Supported formats: ' + supported)
     args = parser.parse_args()
 
-data = imread(args.file)
+    data = imread(args.file)
+    d_value, coherence, direction, spread = analyze(data, args.r_min, args.r_max, args.FFT_size, args.step)
 
-crist, coherence, direction, spread = analyze(data, args.r_min, args.r_max, args.FFT_size, args.step)
+    fig, axarr = plt.subplots(2, 2)
+    axarr[0, 0].imshow(d_value)
+    axarr[0, 0].set_title('d_values')
+    axarr[0, 1].imshow(coherence)
+    axarr[0, 1].set_title('coherence')
+    axarr[1, 0].imshow(direction)
+    axarr[1, 0].set_title('direction')
+    axarr[1, 1].imshow(spread)
+    axarr[1, 1].set_title('spread')
+    plt.tight_layout()
 
-plt.imshow(crist)
-plt.imshow(directions)
+    if args.output is None:
+        plt.show()
+    else:
+        try:
+            plt.savefig(args.output)
+        except ValueError:
+            print('Cannot save figure ({})'.format(args.output))
+            print('Supported formats: {}'.format(supported))
+            plt.show()
+
