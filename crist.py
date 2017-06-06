@@ -137,7 +137,6 @@ def analyze(im, r_min, r_max, fft_size, step):
 
 
 if __name__ == '__main__':
-    import sys
     from argparse import ArgumentParser
 
     parser = ArgumentParser(description='Analyze local cristallinity of data')
