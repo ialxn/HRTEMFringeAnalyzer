@@ -55,19 +55,25 @@ def determine_lattice_const(s, r_min, r_max, n_r):
     """
     FFT_SIZE2 = s.shape[0]//2
 
-    # set number of bins to ensure that ``n_r`` bins cover ``r_min`` - ``r_max``
-    N_BINS = int(np.ceil(np.sqrt(2.0) * FFT_SIZE2 * n_r / (r_max - r_min)))
+    # bin edges to ensure that ``n_r`` bins cover ``r_min`` - ``r_max`` and
+    # include both endpoints
+    bins = np.linspace(r_min, r_max, n_r + 1, endpoint=True)
     # ``x, y`` are pixel indices relative to origin (cetner) of ``spec``
     x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
                     -FFT_SIZE2 : FFT_SIZE2]
     r = np.sqrt(x*x + y*y)
+    radius, _ = np.histogram(r.flatten(), bins=bins, weights=s.flatten())
 
-    radius, _ = np.histogram(r.flatten(), bins=N_BINS, weights=s.flatten())
-    idx_d = radius.argmax()
-    # TODO: Umrechnen von pixel auf nm
-    d = 1.0 * idx_d
-    # TODO: calculate delta_d
-    delta_d = 0
+    if radius.max() >= 2.0 * radius.mean():
+        # significant peak
+        idx_d = radius.argmax()
+        # TODO: Umrechnen von pixel auf nm
+        d = 1.0 * idx_d
+        # TODO: calculate delta_d
+        delta_d = 0
+    else:
+        d = float('nan')
+        delta_d = float('nan')
 
     return d, delta_d
 
