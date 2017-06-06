@@ -135,13 +135,32 @@ def analyze(im, r_min, r_max, fft_size, step):
 
     return d, delta_d, phi, delta_phi
 
-FFT_SIZE = 64
-R_MIN = 10
-data = imread('../1.tif')
-R_MAX = 20
-STEP = 64
 
-crist, coherence, direction, spread = analyze(data, R_MIN, R_MAX, FFT_SIZE, STEP)
+if __name__ == '__main__':
+    import sys
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser(description='Analyze local cristallinity of data')
+    parser.add_argument('-f', '--file', metavar='FILE',
+                        type=str, required=True,
+                        help='Name of data file')
+    parser.add_argument('-F', '--FFT_size', metavar='N',
+                        type=int, default=128,
+                        help='Size of moving window (NxN) [128].')
+    parser.add_argument('-r', '--r_min', metavar='R.r',
+                        type=float, default=0.0,
+                        help='Minimum radius (of FFT in pixels) to be evaluated')
+    parser.add_argument('-R', '--r_max', metavar='R.r',
+                        type=float, default=10.0,
+                        help='Maximum radius (of FFT in pixels) to be evaluated')
+    parser.add_argument('-s', '--step', metavar='S',
+                        type=int, default=64,
+                        help='Step size (x and y) in pixels of moving window')
+    args = parser.parse_args()
+
+data = imread(args.file)
+
+crist, coherence, direction, spread = analyze(data, args.r_min, args.r_max, args.FFT_size, args.step)
 
 plt.imshow(crist)
 plt.imshow(directions)
