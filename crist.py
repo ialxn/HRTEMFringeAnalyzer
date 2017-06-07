@@ -191,7 +191,7 @@ def sub_imageplot(data, ax, title, vmin, vmax):
     # Create colorbar in the appended axes
     # Tick locations can be set with the kwarg `ticks`
     # and the format of the ticklabels with kwarg `format`
-    cbar = plt.colorbar(im, cax=cax)
+    plt.colorbar(im, cax=cax)
     ax.set_title(title)
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
