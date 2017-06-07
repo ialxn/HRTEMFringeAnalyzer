@@ -19,12 +19,15 @@ def noise_floor(s):
         + calculate mean and standard deviation
         + define noise floor as mean-value + 3*standard deviations
     """
-    # offset 0.5 ensures that center of roi lies between pixels i.e. that
-    # left and right aswel as above and below contain the same number of columns / rows
+    # ``x, y`` are pixel distances relative to origin (center) of ``spec``
+    # the offset of 0.5 makes the center lies between pixels and ensures that
+    # the distances from center to any of the sides is equal. with the offset
+    # the minimum radius is 0.5 pixels, i.e. we are measuring the distance
+    # to the center of the pixels.
     FFT_SIZE2 = s.shape[0]//2
     R2 = FFT_SIZE2 * FFT_SIZE2
-    x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
-                    -FFT_SIZE2 : FFT_SIZE2]
+    x, y = np.ogrid[-FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5,
+                    -FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5]
     mask = ((x*x + y*y) >= R2)
     mean = s[mask].mean()
     error = s[mask].std()
@@ -48,9 +51,13 @@ def analyze_direction(s):
     FFT_SIZE2 = s.shape[0]//2
     N_BINS = 36
     DELTA_PHI = np.pi / N_BINS
-    x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
-                    -FFT_SIZE2 : FFT_SIZE2]
-
+    # ``x, y`` are pixel distances relative to origin (center) of ``spec``
+    # the offset of 0.5 makes the center lies between pixels and ensures that
+    # the distances from center to any of the sides is equal. with the offset
+    # the minimum radius is 0.5 pixels, i.e. we are measuring the distance
+    # to the center of the pixels.
+    x, y = np.ogrid[-FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5,
+                    -FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5]
     phi = np.arctan2(y, x)
     phi[phi < 0] += np.pi
     d, _ = np.histogram(phi.flatten(), bins=N_BINS, weights=s.flatten())
@@ -79,9 +86,13 @@ def determine_lattice_const(s, r_min, r_max, n_r):
     # bin edges to ensure that ``n_r`` bins cover ``r_min`` - ``r_max`` and
     # include both endpoints
     bins = np.linspace(r_min, r_max, n_r + 1, endpoint=True)
-    # ``x, y`` are pixel indices relative to origin (cetner) of ``spec``
-    x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
-                    -FFT_SIZE2 : FFT_SIZE2]
+    # ``x, y`` are pixel distances relative to origin (center) of ``spec``
+    # the offset of 0.5 makes the center lies between pixels and ensures that
+    # the distances from center to any of the sides is equal. with the offset
+    # the minimum radius is 0.5 pixels, i.e. we are measuring the distance
+    # to the center of the pixels.
+    x, y = np.ogrid[-FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5,
+                    -FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5]
     r = np.sqrt(x*x + y*y)
     radius, _ = np.histogram(r.flatten(), bins=bins, weights=s.flatten())
 
