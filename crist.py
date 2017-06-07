@@ -32,7 +32,7 @@ def analyze_direction(s):
                     -FFT_SIZE2 : FFT_SIZE2]
 
     phi = np.arctan2(y, x)
-    phi[phi<0] += np.pi
+    phi[phi < 0] += np.pi
     d, _ = np.histogram(phi.flatten(), bins=N_BINS, weights=s.flatten())
     idx_d = d.argmax()
     phi_max = idx_d * DELTA_PHI
@@ -189,13 +189,16 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     data = imread(args.file)
-    d_value, coherence, direction, spread = analyze(data, args.r_min, args.r_max, args.FFT_size, args.step)
+    d_value, coherence, direction, spread = analyze(data,
+                                                    args.r_min, args.r_max,
+                                                    args.FFT_size,
+                                                    args.step)
 
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-    sub_imageplot(d_value, ax1, 'd_values', 1,2)
-    sub_imageplot(coherence, ax2, 'coherence', 0,1)
-    sub_imageplot(direction, ax3, 'direction',0.0 , np.pi)
-    sub_imageplot(spread, ax4, 'spread',0,1)
+    sub_imageplot(d_value, ax1, 'd_values', 1.0, 20.0)
+    sub_imageplot(coherence, ax2, 'coherence', 0.0, 1.0)
+    sub_imageplot(direction, ax3, 'direction', 0.0, np.pi)
+    sub_imageplot(spread, ax4, 'spread', 0.0, 1.0)
 
     plt.tight_layout()
 
@@ -208,4 +211,3 @@ if __name__ == '__main__':
             print('Cannot save figure ({})'.format(args.output))
             print('Supported formats: {}'.format(supported))
             plt.show()
-
