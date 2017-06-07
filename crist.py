@@ -10,7 +10,27 @@ from numpy.fft import fft2, fftshift
 import matplotlib.pyplot as plt
 from scipy.misc import imread
 
-#def analyze_ring(s, d_r, d_phi):
+def noise_floor(s):
+    """Determine aproximate noise floor of FFT ``s``
+
+    Ad-hoc definition of the noise floor:
+        + use all data in cornes of 2D FFT (i.e. outside of circle
+          with radius ``R`` = ``FFT_SIZE//2``)
+        + calculate mean and standard deviation
+        + define noise floor as mean-value + 3*standard deviations
+    """
+    # offset 0.5 ensures that center of roi lies between pixels i.e. that
+    # left and right aswel as above and below contain the same number of columns / rows
+    FFT_SIZE2 = s.shape[0]//2
+    R2 = FFT_SIZE2 * FFT_SIZE2
+    x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
+                    -FFT_SIZE2 : FFT_SIZE2]
+    mask = ((x*x + y*y) >= R2)
+    mean = s[mask].mean()
+    error = s[mask].std()
+
+    return mean + 3.0 * error
+
 
 def analyze_direction(s):
     """Determine direction of periodicy in image ``s``
@@ -122,6 +142,7 @@ def analyze(im, r_min, r_max, fft_size, step):
             roi = im[i-FFT_SIZE2 : i+FFT_SIZE2,
                      j-FFT_SIZE2 : j+FFT_SIZE2]
             spec = fftshift(np.abs(fft2(roi-roi.mean())))
+            level = noise_floor(spec)
 
             # select pixels that are between ``r_min`` and ``r_max`` pixels away
             # from center of ``spec`` at ``(FFT_SIZE2, FFT_SIZE2)`` i.e. set
@@ -134,8 +155,10 @@ def analyze(im, r_min, r_max, fft_size, step):
                             -FFT_SIZE2 : FFT_SIZE2]
             mask = ~((x*x + y*y > R_MIN2) & (x*x + y*y < R_MAX2))
             spec[mask] = 0
-
             # only pixels between ``r_min`` and ``r_max`` are non-zero
+
+            # set all pixels below noise floor ``level`` to zero
+            spec[spec <= level] = 0
 
             d[ri][rj], delta_d[ri][rj] = determine_lattice_const(spec, r_min, r_max, 11)
             phi[ri][rj], delta_phi[ri][rj] = analyze_direction(spec)
