@@ -21,20 +21,21 @@ def analyze_direction(s):
 
     Returns
         phi_max : float
-            predominant direction of periodicity
+            predominant direction of periodicity (0..pi)
         delta_phi : float
             FWHH of `phi_max``
     """
     FFT_SIZE2 = s.shape[0]//2
     N_BINS = 36
-    DELTA_PHI = 2.0 * np.pi / N_BINS
+    DELTA_PHI = np.pi / N_BINS
     x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
                     -FFT_SIZE2 : FFT_SIZE2]
 
     phi = np.arctan2(y, x)
+    phi[phi<0] += np.pi
     d, _ = np.histogram(phi.flatten(), bins=N_BINS, weights=s.flatten())
     idx_d = d.argmax()
-    phi_max = -np.pi + idx_d * DELTA_PHI
+    phi_max = idx_d * DELTA_PHI
     #TODO: calculate delta_phi (FWHH)
     delta_phi = 0
 
@@ -193,7 +194,7 @@ if __name__ == '__main__':
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
     sub_imageplot(d_value, ax1, 'd_values', 1,2)
     sub_imageplot(coherence, ax2, 'coherence', 0,1)
-    sub_imageplot(direction, ax3, 'direction',-np.pi, np.pi)
+    sub_imageplot(direction, ax3, 'direction',0.0 , np.pi)
     sub_imageplot(spread, ax4, 'spread',0,1)
 
     plt.tight_layout()
