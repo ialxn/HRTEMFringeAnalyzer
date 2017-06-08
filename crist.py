@@ -49,7 +49,7 @@ def analyze_direction(s):
             FWHH of `phi_max``
     """
     FFT_SIZE2 = s.shape[0]//2
-    N_BINS = 36
+    N_BINS = 36 # 5 degrees per bin
     # ``x, y`` are pixel distances relative to origin (center) of ``spec``
     # the offset of 0.5 makes the center lies between pixels and ensures that
     # the distances from center to any of the sides is equal. with the offset
@@ -60,10 +60,35 @@ def analyze_direction(s):
     phi = np.arctan2(y, x)
     phi[phi < 0] += np.pi
     d, _ = np.histogram(phi.flatten(), bins=N_BINS, weights=s.flatten())
-    idx_d = d.argmax()
-    phi_max = idx_d * np.pi / N_BINS
-    #TODO: calculate delta_phi (FWHH)
-    delta_phi = 0
+
+    #
+    # set significance level by choosing 3 values at +- 45 degrees from
+    # maximum (use circular boundaries)
+    # negative side
+    idx_max = d.argmax()
+    start_idx = (idx_max - 9 - 1) % 36
+    stop_idx = (idx_max - 9 + 1) % 36
+    f1 = d[start_idx : stop_idx]
+    if len(f1):
+        f1 = f1.mean()
+    else:
+        f1 = float('nan')
+    # positive side
+    start_idx = (idx_max + 9 - 1) % 36
+    stop_idx = (idx_max + 9 + 1) % 36
+    f2 = d[start_idx : stop_idx]
+    if len(f2):
+        f2 = f2.mean()
+    else:
+        f2 = float('nan')
+    if d.max() > (f1 + f2):
+        # significant peak
+        phi_max = idx_max * np.pi / N_BINS
+        #TODO: calculate delta_phi (FWHH)
+        delta_phi = float('nan')
+    else:
+        phi_max = float('nan')
+        delta_phi = float('nan')
 
     return phi_max, delta_phi
 
