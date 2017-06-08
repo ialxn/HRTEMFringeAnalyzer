@@ -108,7 +108,12 @@ def determine_lattice_const(s, r_min, r_max):
     #
     radius, _ = np.histogram(r.flatten(), bins=bins, weights=s.flatten())
 
-    if radius.max() >= 2.0 * radius.mean():
+    #
+    # calculate noise level from mean of last 3 values
+    #
+    noise_floor = radius[-3:].mean()
+
+    if radius.max() > 2.0 * noise_floor:
         # significant peak
         idx_d = radius.argmax()
         # TODO: Umrechnen von pixel auf nm
