@@ -68,7 +68,7 @@ def analyze_direction(s):
     return phi_max, delta_phi
 
 
-def determine_lattice_const(s, r_min, r_max, n_r):
+def determine_lattice_const(s, r_min, r_max):
     """Determine lattice constant and coherence lenght from FFT. All calculations
     in pixel numbers.
 
@@ -81,15 +81,20 @@ def determine_lattice_const(s, r_min, r_max, n_r):
             number of bins used in interval ``r_min`` - ``r_max``
     """
     FFT_SIZE2 = s.shape[0]//2
-
+    n_r = r_max - r_min
+    #
     # bin edges to ensure that ``n_r`` bins cover ``r_min`` - ``r_max`` and
     # include both endpoints
+    #
     bins = np.linspace(r_min, r_max, n_r + 1, endpoint=True)
+
+    #
     # ``x, y`` are pixel distances relative to origin (center) of ``spec``
     # the offset of 0.5 makes the center lies between pixels and ensures that
     # the distances from center to any of the sides is equal. with the offset
     # the minimum radius is 0.5 pixels, i.e. we are measuring the distance
     # to the center of the pixels.
+    #
     x, y = np.ogrid[-FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5,
                     -FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5]
     r = np.sqrt(x*x + y*y)
@@ -170,7 +175,7 @@ def analyze(im, r_min, r_max, fft_size, step):
             # set all pixels below noise floor ``level`` to zero
             spec[spec <= level] = 0
 
-            d[ri][rj], delta_d[ri][rj] = determine_lattice_const(spec, r_min, r_max, 11)
+            d[ri][rj], delta_d[ri][rj] = determine_lattice_const(spec, r_min, r_max)
             phi[ri][rj], delta_phi[ri][rj] = analyze_direction(spec)
 
     return d, delta_d, phi, delta_phi
