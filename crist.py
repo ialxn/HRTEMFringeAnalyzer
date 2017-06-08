@@ -115,11 +115,34 @@ def determine_lattice_const(s, r_min, r_max):
 
     if radius.max() > 2.0 * noise_floor:
         # significant peak
-        idx_d = radius.argmax()
         # TODO: Umrechnen von pixel auf nm
-        d = r_min + idx_d * (r_max - r_min) / n_r
-        # TODO: calculate delta_d
-        delta_d = 0
+        idx_max = radius.argmax()
+        n_used = radius[radius > radius.max() / 2.0].size
+        if n_used < 3:
+            # not enough data for fit
+            d = r_min + idx_max
+            delta_d = float('nan')
+        else:
+            start = idx_max - n_used//2
+            if start < 0:
+                start = 0
+            x = range(start, start + n_used)
+            coeffs = np.polyfit(x, radius[start : start + n_used], 2)
+            # y = a +b*x + c*x^2
+            # maximum (dy/dx) at x = -b/(2c)
+            p = np.poly1d(coeffs)
+            d = coeffs[1] / (2.0 * coeffs[2])
+            # calculate ``delta_d`` as FWHH
+            # calculate ``HH`` from maximum at ``d``
+            # shift polynom by ``-HH``
+            # FW is difference between roots
+            HH = p(d) / 2.0
+            p.c[2] -= HH
+            delta_d = np.abs(p.r[1] - p.r[0])
+            if delta_d >= r_max - r_min:
+                delta_d = float('nan')
+            d += r_min
+            delta_d = 1/delta_d
     else:
         d = float('nan')
         delta_d = float('nan')
