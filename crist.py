@@ -11,6 +11,9 @@ import matplotlib.pyplot as plt
 from scipy.misc import imread
 
 def FWHH(data):
+    """Calculate peak and FWHH of ``data`` by fitting a parabola
+    to the region around the maximum
+    """
     idx_max = data.argmax()
     n_used = data[data > data.max() / 2.0].size
     if n_used < 3:
