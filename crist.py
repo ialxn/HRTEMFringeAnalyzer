@@ -246,8 +246,8 @@ if __name__ == '__main__':
                                                     args.step)
 
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-    sub_imageplot(d_value, ax1, 'd_values', 1.0, 20.0)
-    sub_imageplot(coherence, ax2, 'coherence', 0.0, 1.0)
+    sub_imageplot(d_value, ax1, 'd_values', args.r_min, args.r_max)
+    sub_imageplot(coherence, ax2, 'coherence', 0.0, 10.0 / (args.r_max - args.r_min))
     sub_imageplot(direction, ax3, 'direction', 0.0, np.pi)
     sub_imageplot(spread, ax4, 'spread', 0.0, 1.0)
 
