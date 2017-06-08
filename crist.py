@@ -50,7 +50,6 @@ def analyze_direction(s):
     """
     FFT_SIZE2 = s.shape[0]//2
     N_BINS = 36
-    DELTA_PHI = np.pi / N_BINS
     # ``x, y`` are pixel distances relative to origin (center) of ``spec``
     # the offset of 0.5 makes the center lies between pixels and ensures that
     # the distances from center to any of the sides is equal. with the offset
@@ -62,7 +61,7 @@ def analyze_direction(s):
     phi[phi < 0] += np.pi
     d, _ = np.histogram(phi.flatten(), bins=N_BINS, weights=s.flatten())
     idx_d = d.argmax()
-    phi_max = idx_d * DELTA_PHI
+    phi_max = idx_d * np.pi / N_BINS
     #TODO: calculate delta_phi (FWHH)
     delta_phi = 0
 
