@@ -100,7 +100,7 @@ def determine_lattice_const(s, r_min, r_max, n_r):
         # significant peak
         idx_d = radius.argmax()
         # TODO: Umrechnen von pixel auf nm
-        d = 1.0 * idx_d
+        d = r_min + idx_d * (r_max - r_min) / n_r
         # TODO: calculate delta_d
         delta_d = 0
     else:
@@ -183,7 +183,7 @@ def sub_imageplot(data, ax, title, vmin, vmax):
     """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    im = ax.imshow(data, cmap='bwr', vmin=vmin, vmax=vmax)
+    im = ax.imshow(data, cmap='jet', vmin=vmin, vmax=vmax)
     # Create divider for existing axes instance
     divider = make_axes_locatable(ax)
     # Append axes to the right of ax, with 20% width of ax
