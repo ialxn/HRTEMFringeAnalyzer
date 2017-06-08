@@ -113,9 +113,8 @@ def analyze_direction(s):
         f2 = float('nan')
     if d.max() > (f1 + f2):
         # significant peak
-        phi_max = idx_max * np.pi / N_BINS
-        #TODO: calculate delta_phi (FWHH)
-        delta_phi = float('nan')
+        phi_max, delta_phi = FWHH(d)
+        phi_max *= (np.pi / N_BINS)
     else:
         phi_max = float('nan')
         delta_phi = float('nan')
