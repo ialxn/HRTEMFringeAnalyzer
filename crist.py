@@ -81,12 +81,11 @@ def determine_lattice_const(s, r_min, r_max):
             number of bins used in interval ``r_min`` - ``r_max``
     """
     FFT_SIZE2 = s.shape[0]//2
-    n_r = r_max - r_min
     #
     # bin edges to ensure that ``n_r`` bins cover ``r_min`` - ``r_max`` and
     # include both endpoints
     #
-    bins = np.linspace(r_min, r_max, n_r + 1, endpoint=True)
+    bins = np.linspace(r_min, r_max, r_max - r_min + 1, endpoint=True)
 
     #
     # ``x, y`` are pixel distances relative to origin (center) of ``spec``
@@ -111,9 +110,7 @@ def determine_lattice_const(s, r_min, r_max):
     #
     # calculate noise level from mean of last 3 values
     #
-    noise_floor = radius[-3:].mean()
-
-    if radius.max() > 2.0 * noise_floor:
+    if radius.max() > 2.0 * radius[-3:].mean():
         # significant peak
         # TODO: Umrechnen von pixel auf nm
         idx_max = radius.argmax()
@@ -136,13 +133,12 @@ def determine_lattice_const(s, r_min, r_max):
             # calculate ``HH`` from maximum at ``d``
             # shift polynom by ``-HH``
             # FW is difference between roots
-            HH = p(d) / 2.0
-            p.c[2] -= HH
+            p.c[2] -= p(d) / 2.0
             delta_d = np.abs(p.r[1] - p.r[0])
             if delta_d >= r_max - r_min:
                 delta_d = float('nan')
             d += r_min
-            delta_d = 1/delta_d
+            delta_d = 1.0 / delta_d
     else:
         d = float('nan')
         delta_d = float('nan')
