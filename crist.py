@@ -22,7 +22,7 @@ def FWHH(data):
         if start < 0:
             start = 0
         x = range(start, start + n_used)
-        coeffs = np.polyfit(x, data[start : start + n_used], 2)
+        coeffs = np.polyfit(x, data.take(x, mode='wrap'), 2)
         # y = a +b*x + c*x^2
         # maximum (dy/dx) at x = -b/(2c)
         p = np.poly1d(coeffs)
