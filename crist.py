@@ -273,7 +273,7 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(description='Analyze local cristallinity of data')
     parser.add_argument('-a', '--autoscale', metavar='KEY',
-                        type=str, default=None,
+                        type=str, default='X',
                         help='autoscale color bar [DCPSA]')
     parser.add_argument('-f', '--file', metavar='FILE',
                         type=str, required=True,
