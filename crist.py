@@ -272,6 +272,9 @@ if __name__ == '__main__':
     plt.close()
 
     parser = ArgumentParser(description='Analyze local cristallinity of data')
+    parser.add_argument('-a', '--autoscale', metavar='KEY',
+                        type=str, default=None,
+                        help='autoscale color bar [DCPSA]')
     parser.add_argument('-f', '--file', metavar='FILE',
                         type=str, required=True,
                         help='Name of data file')
@@ -298,10 +301,34 @@ if __name__ == '__main__':
                                                     args.step)
 
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-    sub_imageplot(d_value, ax1, 'd_values', args.r_min, args.r_max / 2.0)
-    sub_imageplot(coherence, ax2, 'coherence', 0.0, 10.0 / (args.r_max - args.r_min))
-    sub_imageplot(direction, ax3, 'direction', 0.0, np.pi)
-    sub_imageplot(spread, ax4, 'spread', 0.0, 1.0)
+
+    if ('A' in args.autoscale) or ('D' in args.autoscale):
+        sub_imageplot(d_value, ax1, 'd_values',
+                      np.nanmin(d_value), np.nanmax(d_value))
+    else:
+        sub_imageplot(d_value, ax1, 'd_values',
+                      args.r_min, args.r_max / 2.0)
+
+    if ('A' in args.autoscale) or ('C' in args.autoscale):
+        sub_imageplot(coherence, ax2, 'coherence',
+                      np.nanmin(coherence), np.nanmax(coherence))
+    else:
+        sub_imageplot(coherence, ax2, 'cpherence',
+                      0.0, 1.0)
+
+    if ('A' in args.autoscale) or ('P' in args.autoscale):
+        sub_imageplot(direction, ax3, 'direction',
+                      np.nanmin(direction), np.nanmax(direction))
+    else:
+        sub_imageplot(direction, ax3, 'direction',
+                      0.0, np.pi)
+
+    if ('A' in args.autoscale) or ('S' in args.autoscale):
+        sub_imageplot(spread, ax4, 'spread',
+                      np.nanmin(spread), np.nanmax(spread))
+    else:
+        sub_imageplot(spread, ax4, 'spread',
+                      0.0, 1.0)
 
     plt.tight_layout()
 
