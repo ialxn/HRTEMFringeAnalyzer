@@ -9,6 +9,14 @@ import numpy as np
 from numpy.fft import fft2, fftshift
 import matplotlib.pyplot as plt
 from scipy.misc import imread
+from scipy.optimize import curve_fit, OptimizeWarning
+
+def gaussian(x, *p):
+    """Fit gaussian and offset
+    """
+    A, mu, sigma, offset = p
+    return A * np.exp( -(x - mu)**2 / (2.0 * sigma**2)) + offset
+
 
 def FWHH(x, y):
     """Calculate peak and FWHH of ``y(x)`` by fitting a parabola
@@ -29,28 +37,29 @@ def FWHH(x, y):
     # determine interval that will be fitted
     # (use only data where y > mean)
     idx_max = y.argmax()
-    n_used = y[y > y.mean()].size
-    if n_used < 3:
+    m = np.isfinite(y)
+    n_used = y[m][y > np.mean(y)].size
+    if n_used < 4:
         # not enough data for fit, return x for which y is maximum
         max_value = x[idx_max]
         delta_value = float('nan')
     else:
-        # make sure we start inside the interval covered by data
-        start = idx_max - n_used//2
-        if start < 0:
-            # outside interval
-            start = 0
-        coeffs = np.polyfit(x[start : start + n_used],
-                            y[start : start + n_used],
-                            2)
-        # y = a +b*x + c*x^2
-        # maximum (dy/dx) at x = -b/(2c)
-        p = np.poly1d(coeffs)
-        max_value = -coeffs[1] / (2.0 * coeffs[2])
-        # to caluclate FWHH we shift polynom by -max_value
-        # and the determine FWHH as distance between its roots
-        p.c[2] -= p(max_value) / 2.0
-        delta_value = np.abs(p.r[1] - p.r[0])
+        p0 = [y[idx_max],
+              x[idx_max],
+              n_used//2 * x[1]-x[0],
+              np.nanmean(y)]
+        try:
+            coeffs, _ = curve_fit(gaussian,
+                                  x[m],
+                                  y[m],
+                                  p0=p0)
+        except (ValueError, RuntimeError, OptimizeWarning) as error:
+            max_value = float('nan')
+            delta_value = float('nan')
+        else:
+            # successful fit
+            max_value = coeffs[1]
+            delta_value = coeffs[2]
 
     return max_value, delta_value
 
@@ -107,30 +116,9 @@ def analyze_direction(s):
     phi[phi < 0] += np.pi
     d, _ = np.histogram(phi.flatten(), bins=N_BINS, weights=s.flatten())
 
-    #
-    # set significance level by choosing 3 values at +- 45 degrees from
-    # maximum (use circular boundaries)
-    # negative side
-    idx_max = d.argmax()
-    start_idx = (idx_max - 9 - 1) % 36
-    stop_idx = (idx_max - 9 + 1) % 36
-    f1 = d[start_idx : stop_idx]
-    if len(f1):
-        f1 = f1.mean()
-    else:
-        f1 = float('nan')
-    # positive side
-    start_idx = (idx_max + 9 - 1) % 36
-    stop_idx = (idx_max + 9 + 1) % 36
-    f2 = d[start_idx : stop_idx]
-    if len(f2):
-        f2 = f2.mean()
-    else:
-        f2 = float('nan')
-    if d.max() > (f1 + f2):
-        # significant peak
+    if d.max() > 2.0 * np.nanmean(d):
+        #   significant peak
         phi_max, delta_phi = FWHH(np.linspace(0.5*dphi, np.pi -0.5*dphi, num=N_BINS), d)
-        phi_max *= (np.pi / N_BINS)
     else:
         phi_max = float('nan')
         delta_phi = float('nan')
@@ -180,14 +168,11 @@ def determine_lattice_const(s, r_min, r_max):
     #
     # calculate noise level from mean of last 3 values
     #
-    if radius.max() > 2.0 * radius[-3:].mean():
+    if radius.max() > 2.0 * np.nanmean(radius):
         # significant peak
         d, delta_d = FWHH(np.linspace(r_min + 0.5*dr, r_max -0.5*dr, num=n_r),
                           radius)
-        if delta_d >= r_max - r_min:
-            delta_d = float('nan')
-        d = r_min + d * (bins[1] - bins[0])
-        delta_d = 1.0 / (delta_d * (bins[1] - bins[0]))
+        delta_d = 1.0 / delta_d
     else:
         d = float('nan')
         delta_d = float('nan')
