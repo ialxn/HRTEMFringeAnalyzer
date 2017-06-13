@@ -10,34 +10,49 @@ from numpy.fft import fft2, fftshift
 import matplotlib.pyplot as plt
 from scipy.misc import imread
 
-def FWHH(data):
-    """Calculate peak and FWHH of ``data`` by fitting a parabola
-    to the region around the maximum
+def FWHH(x, y):
+    """Calculate peak and FWHH of ``y(x)`` by fitting a parabola
+    to the region around the maximum.
+
+    Parameters:
+        x : array of floats
+            x values
+        y : array of floats
+            y values (at x)
+
+    Returns
+        max_value : float
+            x value for which y=f(x) is maximum
+        delta_value : float
+            FWHH
     """
-    idx_max = data.argmax()
-    n_used = data[data > data.max() / 2.0].size
+    # determine interval that will be fitted
+    # (use only data where y > mean)
+    idx_max = y.argmax()
+    n_used = y[y > y.mean()].size
     if n_used < 3:
-        # not enough data for fit
-        max_d = idx_max
-        delta_d = float('nan')
+        # not enough data for fit, return x for which y is maximum
+        max_value = x[idx_max]
+        delta_value = float('nan')
     else:
+        # make sure we start inside the interval covered by data
         start = idx_max - n_used//2
         if start < 0:
+            # outside interval
             start = 0
-        x = range(start, start + n_used)
-        coeffs = np.polyfit(x, data.take(x, mode='wrap'), 2)
+        coeffs = np.polyfit(x[start : start + n_used],
+                            y[start : start + n_used],
+                            2)
         # y = a +b*x + c*x^2
         # maximum (dy/dx) at x = -b/(2c)
         p = np.poly1d(coeffs)
-        max_d = coeffs[1] / (2.0 * coeffs[2])
-        # calculate ``delta_d`` as FWHH
-        # calculate ``HH`` from maximum at ``d``
-        # shift polynom by ``-HH``
-        # FW is difference between roots
-        p.c[2] -= p(max_d) / 2.0
-        delta_d = np.abs(p.r[1] - p.r[0])
+        max_value = -coeffs[1] / (2.0 * coeffs[2])
+        # to caluclate FWHH we shift polynom by -max_value
+        # and the determine FWHH as distance between its roots
+        p.c[2] -= p(max_value) / 2.0
+        delta_value = np.abs(p.r[1] - p.r[0])
 
-    return max_d, delta_d
+    return max_value, delta_value
 
 
 def noise_floor(s):
@@ -80,6 +95,7 @@ def analyze_direction(s):
     """
     FFT_SIZE2 = s.shape[0]//2
     N_BINS = 36 # 5 degrees per bin
+    dphi = 5
     # ``x, y`` are pixel distances relative to origin (center) of ``spec``
     # the offset of 0.5 makes the center lies between pixels and ensures that
     # the distances from center to any of the sides is equal. with the offset
@@ -113,7 +129,7 @@ def analyze_direction(s):
         f2 = float('nan')
     if d.max() > (f1 + f2):
         # significant peak
-        phi_max, delta_phi = FWHH(d)
+        phi_max, delta_phi = FWHH(np.linspace(0.5*dphi, np.pi -0.5*dphi, num=N_BINS), d)
         phi_max *= (np.pi / N_BINS)
     else:
         phi_max = float('nan')
@@ -131,15 +147,15 @@ def determine_lattice_const(s, r_min, r_max):
             2D Fourier transform.
         r_min, r_max : float
             only data between ``r_min`` and ``r_max`` are non-zero (valid)
-        n_r : int
-            number of bins used in interval ``r_min`` - ``r_max``
     """
     FFT_SIZE2 = s.shape[0]//2
+    n_r = int(np.around(10 * (r_max - r_min)))  # ad hoc definition (10)
+    dr = (r_max - r_min) / n_r
     #
     # bin edges to ensure that ``n_r`` bins cover ``r_min`` - ``r_max`` and
     # include both endpoints
     #
-    bins = np.linspace(r_min, r_max, r_max - r_min + 1, endpoint=True)
+    bins = np.linspace(r_min, r_max, n_r + 1, endpoint=True)
 
     #
     # ``x, y`` are pixel distances relative to origin (center) of ``spec``
@@ -166,12 +182,12 @@ def determine_lattice_const(s, r_min, r_max):
     #
     if radius.max() > 2.0 * radius[-3:].mean():
         # significant peak
-        # TODO: Umrechnen von pixel auf nm
-        d, delta_d = FWHH(radius)
+        d, delta_d = FWHH(np.linspace(r_min + 0.5*dr, r_max -0.5*dr, num=n_r),
+                          radius)
         if delta_d >= r_max - r_min:
             delta_d = float('nan')
-        d += r_min
-        delta_d = 1.0 / delta_d
+        d = r_min + d * (bins[1] - bins[0])
+        delta_d = 1.0 / (delta_d * (bins[1] - bins[0]))
     else:
         d = float('nan')
         delta_d = float('nan')
@@ -188,7 +204,9 @@ def analyze(im, r_min, r_max, fft_size, step):
         im : np array
             Image to be analyzed.
         r_min, r_max : float
-            Minimum, maximum of circle (in pixels of FFT) to be analyzed
+            Minimum, maximum of frequency (in pixels of FFT) to be analyzed.
+            Calculated form min/max of period to be analyzed as
+            freq = fft_size / period
         fft_size : int
             size of widow to be analyzed (must be 2^N)
         step : int
@@ -281,14 +299,14 @@ if __name__ == '__main__':
     parser.add_argument('-F', '--FFT_size', metavar='N',
                         type=int, default=128,
                         help='Size of moving window (NxN) [128].')
-    parser.add_argument('-r', '--r_min', metavar='R.r',
+    parser.add_argument('-m', '--d_min', metavar='R.r',
                         type=float, default=0.0,
-                        help='Minimum radius (of FFT in pixels) to be evaluated')
-    parser.add_argument('-R', '--r_max', metavar='R.r',
-                        type=float, default=10.0,
-                        help='Maximum radius (of FFT in pixels) to be evaluated')
+                        help='Minimum period (in pixels) to be evaluated')
+    parser.add_argument('-M', '--d_max', metavar='R.r',
+                        type=float, default=5.0,
+                        help='Maximum period (in pixels) to be evaluated')
     parser.add_argument('-s', '--step', metavar='S',
-                        type=int, default=64,
+                        type=int, default=25,
                         help='Step size (x and y) in pixels of moving window')
     parser.add_argument('-o', '--output', metavar='FILE', type=str,
                         help='Output to file. Supported formats: ' + supported)
@@ -296,7 +314,8 @@ if __name__ == '__main__':
 
     data = imread(args.file)
     d_value, coherence, direction, spread = analyze(data,
-                                                    args.r_min, args.r_max,
+                                                    args.FFT_size / args.d_max,
+                                                    args.FFT_size / args.d_min,
                                                     args.FFT_size,
                                                     args.step)
 
@@ -307,7 +326,7 @@ if __name__ == '__main__':
                       np.nanmin(d_value), np.nanmax(d_value))
     else:
         sub_imageplot(d_value, ax1, 'd_values',
-                      args.r_min, args.r_max / 2.0)
+                      args.d_min, args.d_max / 2.0)
 
     if ('A' in args.autoscale) or ('C' in args.autoscale):
         sub_imageplot(coherence, ax2, 'coherence',
