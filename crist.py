@@ -5,17 +5,25 @@ Created on Fri Jun  2 08:32:42 2017
 
 @author: alxneit
 """
+import warnings
 import numpy as np
 from numpy.fft import fft2, fftshift
-import matplotlib.pyplot as plt
 from scipy.misc import imread
 from scipy.optimize import curve_fit, OptimizeWarning
+import matplotlib.pyplot as plt
 
+#
+# for jacoby
+# ddA = 1
+# ddoffset = 1
+# ddsigma = A*(mu - x)**2*exp(-0.5*(mu - x)**2/sigma**2)/sigma**3
+# ddmu = -A*(mu - x)*exp(-0.5*(mu - x)**2/sigma**2)/sigma**2
+#
 def gaussian(x, *p):
     """Fit gaussian and offset
     """
     A, mu, sigma, offset = p
-    return A * np.exp( -(x - mu)**2 / (2.0 * sigma**2)) + offset
+    return A * np.exp(-(x - mu)**2 / (2.0 * sigma**2)) + offset
 
 
 def FWHH(x, y):
@@ -38,28 +46,36 @@ def FWHH(x, y):
     # (use only data where y > mean)
     idx_max = y.argmax()
     m = np.isfinite(y)
-    n_used = y[m][y > np.mean(y)].size
-    if n_used < 4:
+    if len(m) < 4:
         # not enough data for fit, return x for which y is maximum
         max_value = x[idx_max]
         delta_value = float('nan')
     else:
         p0 = [y[idx_max],
               x[idx_max],
-              n_used//2 * x[1]-x[0],
+              x[m].ptp() / 2,
               np.nanmean(y)]
         try:
-            coeffs, _ = curve_fit(gaussian,
-                                  x[m],
-                                  y[m],
-                                  p0=p0)
-        except (ValueError, RuntimeError, OptimizeWarning) as error:
+            warnings.simplefilter('ignore', OptimizeWarning)
+            coeffs, cov = curve_fit(gaussian,
+                                    x[m],
+                                    y[m],
+                                    p0=p0)
+        except (ValueError, RuntimeError) as error:
             max_value = float('nan')
             delta_value = float('nan')
         else:
-            # successful fit
-            max_value = coeffs[1]
-            delta_value = coeffs[2]
+            # successful fit:
+            #   maximum: in (validated) x-range and finite error
+            #   delta: positive and error smaller than (validated) x-range
+            if (coeffs[1] > x[m][0]) and (coeffs[1] < x[m][-1]) and np.isfinite(cov[1, 1]):
+                max_value = coeffs[1]
+            else:
+                max_value = float('nan')
+            if (coeffs[2] > 0.0) and (cov[2, 2] < x[m].ptp()):
+                delta_value = coeffs[2]
+            else:
+                delta_value = float('nan')
 
     return max_value, delta_value
 
@@ -118,7 +134,7 @@ def analyze_direction(s):
 
     if d.max() > 2.0 * np.nanmean(d):
         #   significant peak
-        phi_max, delta_phi = FWHH(np.linspace(0.5*dphi, np.pi -0.5*dphi, num=N_BINS), d)
+        phi_max, delta_phi = FWHH(np.linspace(0.5*dphi, np.pi - 0.5*dphi, num=N_BINS), d)
     else:
         phi_max = float('nan')
         delta_phi = float('nan')
