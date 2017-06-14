@@ -188,7 +188,7 @@ def determine_lattice_const(s, r_min, r_max):
         # significant peak
         d, delta_d = FWHH(np.linspace(r_min + 0.5*dr, r_max -0.5*dr, num=n_r),
                           radius)
-        delta_d = 1.0 / delta_d
+        d = 2.0 * FFT_SIZE2 / d
     else:
         d = float('nan')
         delta_d = float('nan')
