@@ -119,8 +119,8 @@ def analyze_direction(s):
             FWHH of `phi_max``
     """
     FFT_SIZE2 = s.shape[0]//2
-    N_BINS = 36 # 5 degrees per bin
-    dphi = 5
+    N_BINS = 18 # 10 degrees per bin
+    dphi = 2.0 * np.pi / N_BINS
     # ``x, y`` are pixel distances relative to origin (center) of ``spec``
     # the offset of 0.5 makes the center lies between pixels and ensures that
     # the distances from center to any of the sides is equal. with the offset
@@ -132,7 +132,7 @@ def analyze_direction(s):
     phi[phi < 0] += np.pi
     d, _ = np.histogram(phi.flatten(), bins=N_BINS, weights=s.flatten())
 
-    if d.max() > 2.0 * np.nanmean(d):
+    if d.max() > 1.5 * np.nanmean(d):
         #   significant peak
         phi_max, delta_phi = FWHH(np.linspace(0.5*dphi, np.pi - 0.5*dphi, num=N_BINS), d)
     else:
