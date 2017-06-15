@@ -341,7 +341,7 @@ if __name__ == '__main__':
         sub_imageplot(coherence, ax2, 'coherence',
                       np.nanmin(coherence), np.nanmax(coherence))
     else:
-        sub_imageplot(coherence, ax2, 'cpherence',
+        sub_imageplot(coherence, ax2, 'coherence',
                       0.0, 1.0)
 
     if ('A' in args.autoscale) or ('P' in args.autoscale):
