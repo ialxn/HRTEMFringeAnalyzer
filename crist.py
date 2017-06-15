@@ -134,7 +134,7 @@ def analyze_direction(s):
     # to the center of the pixels.
     x, y = np.ogrid[-FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5,
                     -FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5]
-    phi = np.arctan2(y, x)
+    phi = np.arctan2(x, y)
     phi[phi < 0] += np.pi
     d, _ = np.histogram(phi.flatten(), bins=N_BINS, weights=s.flatten())
 
