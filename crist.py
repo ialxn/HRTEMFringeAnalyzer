@@ -135,8 +135,10 @@ def analyze_direction(s):
     x, y = np.ogrid[-FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5,
                     -FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5]
     phi = np.arctan2(x, y)
+    r2 = x*x + y*y
     phi[phi < 0] += np.pi
-    d, _ = np.histogram(phi.flatten(), bins=N_BINS, weights=s.flatten())
+
+    d, _ = np.histogram(phi.flatten(), bins=N_BINS, weights=s.flatten() / r2.flatten())
 
     if d.max() > 1.5 * np.nanmean(d):
         #   significant peak
