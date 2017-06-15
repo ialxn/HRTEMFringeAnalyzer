@@ -6,10 +6,15 @@ Created on Fri Jun  2 08:32:42 2017
 @author: alxneit
 """
 import warnings
+
 import numpy as np
 from numpy.fft import fft2, fftshift
+
 from scipy.misc import imread
 from scipy.optimize import curve_fit, OptimizeWarning
+
+from numba import jit
+
 import matplotlib.pyplot as plt
 
 #
@@ -19,6 +24,7 @@ import matplotlib.pyplot as plt
 # ddsigma = A*(mu - x)**2*exp(-0.5*(mu - x)**2/sigma**2)/sigma**3
 # ddmu = -A*(mu - x)*exp(-0.5*(mu - x)**2/sigma**2)/sigma**2
 #
+@jit(nopython=True, nogil=True)
 def gaussian(x, *p):
     """Fit gaussian and offset
     """
