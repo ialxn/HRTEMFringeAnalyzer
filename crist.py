@@ -179,13 +179,12 @@ def determine_lattice_const(s, r_min, r_max):
     r = np.sqrt(x*x + y*y)
 
     #
-    # should the weights include 1/r^2?
+    # weights should  include 1/r^2
     # we integrate azimutally, thus noise at large ``r`` contributes more
     # than noise (or signal) at small ``r``
-    #
-    #   weights=s.flatten()/r.flatten()**2
-    #
-    radius, _ = np.histogram(r.flatten(), bins=bins, weights=s.flatten())
+    radius, _ = np.histogram(r.flatten(),
+                             bins=bins,
+                             weights=s.flatten() / r.flatten()**2)
 
     #
     # calculate noise level from mean of last 3 values
