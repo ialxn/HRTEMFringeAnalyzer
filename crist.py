@@ -277,7 +277,7 @@ def sub_imageplot(data, ax, title, vmin, vmax):
     """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    im = ax.imshow(data, cmap='jet', vmin=vmin, vmax=vmax)
+    im = ax.imshow(data, cmap='jet', vmin=vmin, vmax=vmax, origin='upper')
     # Create divider for existing axes instance
     divider = make_axes_locatable(ax)
     # Append axes to the right of ax, with 20% width of ax
