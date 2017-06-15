@@ -223,11 +223,14 @@ def analyze(im, r_min, r_max, fft_size, step):
 
 
     """
-
     R_MIN2 = r_min**2
     R_MAX2 = r_max**2
     FFT_SIZE2 = fft_size//2
 
+    # x-axis is im.shape[1] -> horizontal (left->right)
+    # y-axis is im.shape[0] -> vertical (top->down)
+    # indices v,h for center of roi in image
+    # indices rv, rh for result arrays
     d = np.zeros([(im.shape[0] - fft_size) // step + 1,
                   (im.shape[1] - fft_size) // step + 1])
     delta_d = np.zeros([(im.shape[0] - fft_size) // step + 1,
@@ -237,15 +240,15 @@ def analyze(im, r_min, r_max, fft_size, step):
     delta_phi = np.zeros([(im.shape[0] - fft_size) // step + 1,
                           (im.shape[1] - fft_size) // step+ 1])
 
-    for ri, i in enumerate(range(FFT_SIZE2,
+    for rv, v in enumerate(range(FFT_SIZE2,
                                  im.shape[0] - FFT_SIZE2,
                                  step)):
-        for rj, j in enumerate(range(FFT_SIZE2,
+        for rh, h in enumerate(range(FFT_SIZE2,
                                      im.shape[1] - FFT_SIZE2,
                                      step)):
 
-            roi = im[i-FFT_SIZE2 : i+FFT_SIZE2,
-                     j-FFT_SIZE2 : j+FFT_SIZE2]
+            roi = im[v-FFT_SIZE2 : v+FFT_SIZE2,
+                     h-FFT_SIZE2 : h+FFT_SIZE2]
             spec = fftshift(np.abs(fft2(roi-roi.mean())))
             level = noise_floor(spec)
 
@@ -265,8 +268,8 @@ def analyze(im, r_min, r_max, fft_size, step):
             # set all pixels below noise floor ``level`` to zero
             spec[spec <= level] = 0
 
-            d[ri][rj], delta_d[ri][rj] = determine_lattice_const(spec, r_min, r_max)
-            phi[ri][rj], delta_phi[ri][rj] = analyze_direction(spec)
+            d[rv, rh], delta_d[rv, rh] = determine_lattice_const(spec, r_min, r_max)
+            phi[rv, rh], delta_phi[rv, rh] = analyze_direction(spec)
 
     return d, delta_d, phi, delta_phi
 
