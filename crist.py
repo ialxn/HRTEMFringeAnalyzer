@@ -67,7 +67,7 @@ def FWHH(x, y):
                                     x[m],
                                     y[m],
                                     p0=p0)
-        except (ValueError, RuntimeError) as error:
+        except (ValueError, RuntimeError) :
             max_value = float('nan')
             delta_value = float('nan')
         else:
