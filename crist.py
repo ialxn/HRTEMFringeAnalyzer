@@ -310,10 +310,10 @@ if __name__ == '__main__':
     parser.add_argument('-F', '--FFT_size', metavar='N',
                         type=int, default=128,
                         help='Size of moving window (NxN) [128].')
-    parser.add_argument('-m', '--d_min', metavar='R.r',
+    parser.add_argument('-m', '--d_min', metavar='P.p',
                         type=float, default=0.0,
                         help='Minimum period (in pixels) to be evaluated')
-    parser.add_argument('-M', '--d_max', metavar='R.r',
+    parser.add_argument('-M', '--d_max', metavar='P.p',
                         type=float, default=5.0,
                         help='Maximum period (in pixels) to be evaluated')
     parser.add_argument('-s', '--step', metavar='S',
