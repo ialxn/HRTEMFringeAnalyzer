@@ -136,6 +136,7 @@ def analyze_direction(s):
                     -FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5]
     phi = np.arctan2(x, y)
     r2 = x*x + y*y
+    # map -pi..0 to 0..pi because of symmetrie
     phi[phi < 0] += np.pi
 
     d, _ = np.histogram(phi.flatten(), bins=N_BINS, weights=s.flatten() / r2.flatten())
