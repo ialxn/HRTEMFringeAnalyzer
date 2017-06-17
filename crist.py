@@ -331,7 +331,7 @@ if __name__ == '__main__':
                                                     args.FFT_size,
                                                     args.step)
 
-    if(args.save):
+    if args.save:
         base_name, _ = args.file.rsplit(sep='.', maxsplit=1)
         np.savetxt(base_name + '_periode' + '.dat.gz', d_value, delimiter='\t')
         np.savetxt(base_name + '_coherence' + '.dat.gz', coherence, delimiter='\t')
