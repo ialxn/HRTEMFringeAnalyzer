@@ -57,7 +57,7 @@ def FWHH(x, y):
     else:
         p0 = [y[idx_max],
               x[idx_max],
-              x[m].ptp() / 2,
+              x[m].ptp() / 4.0,
               np.nanmean(y)]
         try:
             warnings.simplefilter('ignore', OptimizeWarning)
