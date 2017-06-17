@@ -48,8 +48,6 @@ def FWHH(x, y):
         delta_value : float
             FWHH
     """
-    # determine interval that will be fitted
-    # (use only data where y > mean)
     idx_max = y.argmax()
     m = np.isfinite(y)
     if len(m) < 4:
