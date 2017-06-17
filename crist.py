@@ -263,8 +263,7 @@ def analyze(im, r_min, r_max, fft_size, step):
             # ``x, y`` are pixel indices relative to origin (cetner) of ``spec``
             x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
                             -FFT_SIZE2 : FFT_SIZE2]
-            mask = ~((x*x + y*y > R_MIN2) & (x*x + y*y < R_MAX2))
-            spec[mask] = 0
+            spec[~((x*x + y*y > R_MIN2) & (x*x + y*y < R_MAX2))] = 0
             # only pixels between ``r_min`` and ``r_max`` are non-zero
 
             # set all pixels below noise floor ``level`` to zero
