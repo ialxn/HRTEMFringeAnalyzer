@@ -319,6 +319,9 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--step', metavar='S',
                         type=int, default=25,
                         help='Step size (x and y) in pixels of moving window')
+    parser.add_argument('-S', '--save',
+                        action='store_true', default=False,
+                        help='Store result in gzipped text files')
     parser.add_argument('-o', '--output', metavar='FILE', type=str,
                         help='Output to file. Supported formats: ' + supported)
     args = parser.parse_args()
@@ -329,6 +332,13 @@ if __name__ == '__main__':
                                                     args.FFT_size / args.d_min,
                                                     args.FFT_size,
                                                     args.step)
+
+    if(args.save):
+        base_name, _ = args.file.rsplit(sep='.', maxsplit=1)
+        np.savetxt(base_name + '_periode' + '.dat.gz', d_value, delimiter='\t')
+        np.savetxt(base_name + '_coherence' + '.dat.gz', coherence, delimiter='\t')
+        np.savetxt(base_name + '_direction' + '.dat.gz', direction, delimiter='\t')
+        np.savetxt(base_name + '_spread' + '.dat.gz', spread, delimiter='\t')
 
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
 
