@@ -27,7 +27,19 @@ import matplotlib.pyplot as plt
 #
 @jit(nopython=True, nogil=True)
 def gaussian(x, *p):
-    """Fit gaussian and offset
+    """Calculate Gaussian and offset
+
+    Parameters:
+        x : float
+            x-value
+        p : list of (four) float parameters
+            A : area
+            mu : x_center
+            sigma : FWHH
+            offset : baseline offset
+
+    Returns
+        y = f(x, p)
     """
     A, mu, sigma, offset = p
     return A * np.exp(-(x - mu)**2 / (2.0 * sigma**2)) + offset
@@ -88,11 +100,20 @@ def FWHH(x, y):
 def noise_floor(s):
     """Determine aproximate noise floor of FFT ``s``
 
+    Parameters:
+        s : np array
+            Window to be analyzed
+
+
     Ad-hoc definition of the noise floor:
         + use all data in cornes of 2D FFT (i.e. outside of circle
           with radius ``R`` = ``FFT_SIZE//2``)
         + calculate mean and standard deviation
         + define noise floor as mean-value + 3*standard deviations
+
+    Returns
+        noise_floor : float
+            Mean + 3*sigma
     """
     # ``x, y`` are pixel distances relative to origin (center) of ``spec``
     # the offset of 0.5 makes the center lies between pixels and ensures that
@@ -159,6 +180,12 @@ def determine_lattice_const(s, r_min, r_max):
             2D Fourier transform.
         r_min, r_max : float
             only data between ``r_min`` and ``r_max`` are non-zero (valid)
+
+    Returns
+        d : float
+            Periode found
+        delta_d : float
+            Coherence length (length of periodic structure) as A.U.
     """
     FFT_SIZE2 = s.shape[0]//2
     n_r = int(np.around(10 * (r_max - r_min)))  # ad hoc definition (10)
@@ -195,6 +222,7 @@ def determine_lattice_const(s, r_min, r_max):
         # significant peak
         d, delta_d = FWHH(np.linspace(r_min + 0.5*dr, r_max -0.5*dr, num=n_r),
                           radius)
+        # convert to periode
         d = 2.0 * FFT_SIZE2 / d
     else:
         d = float('nan')
@@ -203,10 +231,33 @@ def determine_lattice_const(s, r_min, r_max):
     return d, delta_d
 
 
-def inner_loop(v,
-               im, FFT_SIZE2, step,
-               r_min, r_max):
+def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
     """
+    Analyzes horizontal line ``v`` in image ``im``
+
+    Parameters:
+        v : int
+            Line number (horizontal index) to be analyzed
+        im : np array
+            Image to be analyzed
+        FFT_SIZE2 : int
+            Half width of window to be analyzed
+        step : int
+            Horizontal (and vertical) step size to translate
+            window
+        r_min, r_max : float
+            Minimum / maximum frequency to be analyzed
+
+    Returns
+        List of np arrays of length ``Nh``
+        d : np array
+            Periode found
+        delta_d : np array
+            Coherence length (length of periodic structure) as A.U.
+        phi : np array
+            Direction of lattice (direction) vector of periodic structure
+        delta_phi : np array
+            Spread of direction vector
     """
     R_MIN2 = r_min**2
     R_MAX2 = r_max**2
@@ -245,6 +296,7 @@ def inner_loop(v,
 
     return (d, delta_d, phi, delta_phi)
 
+
 def analyze(im, r_min, r_max, fft_size, step, n_jobs):
     """Analyze local crystallinity of image ``im``
 
@@ -256,13 +308,21 @@ def analyze(im, r_min, r_max, fft_size, step, n_jobs):
             Calculated form min/max of period to be analyzed as
             freq = fft_size / period
         fft_size : int
-            size of widow to be analyzed (must be 2^N)
+            Size of window to be analyzed (must be 2^N)
         step : int
-            Window is translated by ``step`` (x and y)
+            Window is translated by ``step`` (horizontal and vertical)
+        n_jobs : int
+            Number of parallel running jobs
 
-    Returns:
-
-
+    Returns
+        d : np array
+            Periode
+        delta_d : np array
+            Coherence length (length of periodic structure) as A.U.
+        phi : np array
+            Direction of lattice (direction) vector of periodic structure
+        delta_phi : np array
+            Spread of direction vector
     """
     FFT_SIZE2 = fft_size//2
     # x-axis is im.shape[1] -> horizontal (left->right)
