@@ -14,6 +14,7 @@ from scipy.misc import imread
 from scipy.optimize import curve_fit, OptimizeWarning
 
 from numba import jit
+from joblib import Parallel, delayed
 
 import matplotlib.pyplot as plt
 
@@ -202,9 +203,49 @@ def determine_lattice_const(s, r_min, r_max):
     return d, delta_d
 
 
+def inner_loop(v,
+               im, FFT_SIZE2, step,
+               r_min, r_max):
+    """
+    """
+    R_MIN2 = r_min**2
+    R_MAX2 = r_max**2
+    fft_size = FFT_SIZE2 * 2
 
+    d = np.zeros([(im.shape[1] - fft_size) // step + 1])
+    delta_d = np.zeros([(im.shape[1] - fft_size) // step + 1])
+    phi = np.zeros([(im.shape[1] - fft_size) // step + 1])
+    delta_phi = np.zeros([(im.shape[1] - fft_size) // step + 1])
 
-def analyze(im, r_min, r_max, fft_size, step):
+    for rh, h in enumerate(range(FFT_SIZE2,
+                                 im.shape[1] - FFT_SIZE2,
+                                 step)):
+
+        roi = im[v-FFT_SIZE2 : v+FFT_SIZE2,
+                 h-FFT_SIZE2 : h+FFT_SIZE2]
+        spec = fftshift(np.abs(fft2(roi-roi.mean())))
+        level = noise_floor(spec)
+
+        # select pixels that are between ``r_min`` and ``r_max`` pixels away
+        # from center of ``spec`` at ``(FFT_SIZE2, FFT_SIZE2)`` i.e. set
+        # other pixels to zero.
+        #
+        # r_min^2 < (i-FFT_SIZE2)^2 + (i-FFT_SIZE2)^2 < r_max^2
+
+        # ``x, y`` are pixel indices relative to origin (cetner) of ``spec``
+        x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
+                        -FFT_SIZE2 : FFT_SIZE2]
+        spec[~((x*x + y*y > R_MIN2) & (x*x + y*y < R_MAX2))] = 0
+        # only pixels between ``r_min`` and ``r_max`` are non-zero
+        # set all pixels below noise floor ``level`` to zero
+        spec[spec <= level] = 0
+
+        d[rh], delta_d[rh] = determine_lattice_const(spec, r_min, r_max)
+        phi[rh], delta_phi[rh] = analyze_direction(spec)
+
+    return (d, delta_d, phi, delta_phi)
+
+def analyze(im, r_min, r_max, fft_size, step, n_jobs):
     """Analyze local crystallinity of image ``im``
 
     Parameters:
@@ -223,52 +264,30 @@ def analyze(im, r_min, r_max, fft_size, step):
 
 
     """
-    R_MIN2 = r_min**2
-    R_MAX2 = r_max**2
     FFT_SIZE2 = fft_size//2
-
     # x-axis is im.shape[1] -> horizontal (left->right)
     # y-axis is im.shape[0] -> vertical (top->down)
     # indices v,h for center of roi in image
     # indices rv, rh for result arrays
-    d = np.zeros([(im.shape[0] - fft_size) // step + 1,
-                  (im.shape[1] - fft_size) // step + 1])
-    delta_d = np.zeros([(im.shape[0] - fft_size) // step + 1,
-                        (im.shape[1] - fft_size) // step+ 1])
-    phi = np.zeros([(im.shape[0] - fft_size) // step + 1,
-                    (im.shape[1] - fft_size) // step + 1])
-    delta_phi = np.zeros([(im.shape[0] - fft_size) // step + 1,
-                          (im.shape[1] - fft_size) // step+ 1])
+    Nh = (im.shape[1] - fft_size) // step + 1
+    Nv = (im.shape[0] - fft_size) // step + 1
+    d = np.zeros([Nv, Nh])
+    delta_d = np.zeros([Nv, Nh])
+    phi = np.zeros([Nv, Nh])
+    delta_phi = np.zeros([Nv, Nh])
 
-    for rv, v in enumerate(range(FFT_SIZE2,
-                                 im.shape[0] - FFT_SIZE2,
-                                 step)):
-        for rh, h in enumerate(range(FFT_SIZE2,
-                                     im.shape[1] - FFT_SIZE2,
-                                     step)):
-
-            roi = im[v-FFT_SIZE2 : v+FFT_SIZE2,
-                     h-FFT_SIZE2 : h+FFT_SIZE2]
-            spec = fftshift(np.abs(fft2(roi-roi.mean())))
-            level = noise_floor(spec)
-
-            # select pixels that are between ``r_min`` and ``r_max`` pixels away
-            # from center of ``spec`` at ``(FFT_SIZE2, FFT_SIZE2)`` i.e. set
-            # other pixels to zero.
-            #
-            # r_min^2 < (i-FFT_SIZE2)^2 + (i-FFT_SIZE2)^2 < r_max^2
-
-            # ``x, y`` are pixel indices relative to origin (cetner) of ``spec``
-            x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
-                            -FFT_SIZE2 : FFT_SIZE2]
-            spec[~((x*x + y*y > R_MIN2) & (x*x + y*y < R_MAX2))] = 0
-            # only pixels between ``r_min`` and ``r_max`` are non-zero
-
-            # set all pixels below noise floor ``level`` to zero
-            spec[spec <= level] = 0
-
-            d[rv, rh], delta_d[rv, rh] = determine_lattice_const(spec, r_min, r_max)
-            phi[rv, rh], delta_phi[rv, rh] = analyze_direction(spec)
+    with Parallel(n_jobs=n_jobs) as parallel:
+        res = parallel(delayed(inner_loop)(v,
+                                           im, FFT_SIZE2, step,
+                                           r_min, r_max) \
+                                           for rv, v, in enumerate(range(FFT_SIZE2,
+                                                                         im.shape[0] - FFT_SIZE2,
+                                                                         step)))
+        for j in range(Nv):
+            d[j] = res[j][0]
+            delta_d[j] = res[j][1]
+            phi[j] = res[j][2]
+            delta_phi[j] = res[j][3]
 
     return d, delta_d, phi, delta_phi
 
@@ -308,6 +327,9 @@ if __name__ == '__main__':
     parser.add_argument('-F', '--FFT_size', metavar='N',
                         type=int, default=128,
                         help='Size of moving window (NxN) [128].')
+    parser.add_argument('-j', '--jobs', metavar='N',
+                        type=int, default=1,
+                        help='Number of threads to be started [1].')
     parser.add_argument('-m', '--d_min', metavar='P.p',
                         type=float, default=0.0,
                         help='Minimum period (in pixels) to be evaluated')
@@ -329,7 +351,7 @@ if __name__ == '__main__':
                                                     args.FFT_size / args.d_max,
                                                     args.FFT_size / args.d_min,
                                                     args.FFT_size,
-                                                    args.step)
+                                                    args.step, args.jobs)
 
     if args.save:
         base_name, _ = args.file.rsplit(sep='.', maxsplit=1)
