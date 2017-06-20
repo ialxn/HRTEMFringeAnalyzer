@@ -7,6 +7,7 @@ Created on Fri Jun  2 08:32:42 2017
 """
 import warnings
 
+from math import sqrt
 import numpy as np
 from numpy.fft import fft2, fftshift
 
@@ -89,8 +90,16 @@ def FWHH(x, y):
                 max_value = coeffs[1]
             else:
                 max_value = float('nan')
-            if (coeffs[2] > 0.0) and (cov[2, 2] < x[m].ptp()):
-                delta_value = coeffs[2]
+            if coeffs[2] > 0.0:
+                try:
+                    err = sqrt(cov[2, 2])
+                except ValueError:
+                    delta_value = float('nan')
+                else:
+                    if err < x[m].ptp():
+                        delta_value = coeffs[2]
+                    else:
+                        delta_value = float('nan')
             else:
                 delta_value = float('nan')
 
