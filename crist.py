@@ -262,11 +262,11 @@ def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
     R_MIN2 = r_min**2
     R_MAX2 = r_max**2
     fft_size = FFT_SIZE2 * 2
-
-    d = np.zeros([(im.shape[1] - fft_size) // step + 1])
-    delta_d = np.zeros([(im.shape[1] - fft_size) // step + 1])
-    phi = np.zeros([(im.shape[1] - fft_size) // step + 1])
-    delta_phi = np.zeros([(im.shape[1] - fft_size) // step + 1])
+    Nh = int(np.ceil((im.shape[1] - fft_size) / step))
+    d = np.zeros([Nh])
+    delta_d = np.zeros([Nh])
+    phi = np.zeros([Nh])
+    delta_phi = np.zeros([Nh])
 
     for rh, h in enumerate(range(FFT_SIZE2,
                                  im.shape[1] - FFT_SIZE2,
@@ -329,8 +329,8 @@ def analyze(im, r_min, r_max, fft_size, step, n_jobs):
     # y-axis is im.shape[0] -> vertical (top->down)
     # indices v,h for center of roi in image
     # indices rv, rh for result arrays
-    Nh = (im.shape[1] - fft_size) // step + 1
-    Nv = (im.shape[0] - fft_size) // step + 1
+    Nh = int(np.ceil((im.shape[1] - fft_size) / step))
+    Nv = int(np.ceil((im.shape[0] - fft_size) / step))
     d = np.zeros([Nv, Nh])
     delta_d = np.zeros([Nv, Nh])
     phi = np.zeros([Nv, Nh])
