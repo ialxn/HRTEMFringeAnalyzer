@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 # ddsigma = A*(mu - x)**2*exp(-0.5*(mu - x)**2/sigma**2)/sigma**3
 # ddmu = -A*(mu - x)*exp(-0.5*(mu - x)**2/sigma**2)/sigma**2
 #
-@jit(nopython=True, nogil=True)
+@jit(nopython=True, nogil=True, cache=True)
 def gaussian(x, *p):
     """Calculate Gaussian and offset
 
