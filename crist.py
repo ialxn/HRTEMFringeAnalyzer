@@ -429,10 +429,14 @@ if __name__ == '__main__':
         + '# both, for horizontal and vertical index\n' \
         + '#'
         base_name, _ = args.file.rsplit(sep='/')[-1].rsplit(sep='.')
-        np.savetxt(base_name + '_periode' + '.dat.gz', d_value, delimiter='\t', header=header, comments='')
-        np.savetxt(base_name + '_coherence' + '.dat.gz', coherence, delimiter='\t', header=header, comments='')
-        np.savetxt(base_name + '_direction' + '.dat.gz', direction, delimiter='\t', header=header, comments='')
-        np.savetxt(base_name + '_spread' + '.dat.gz', spread, delimiter='\t', header=header, comments='')
+        np.savetxt(base_name + '_periode' + '.dat.gz', d_value,
+                   delimiter='\t', header=header, comments='')
+        np.savetxt(base_name + '_coherence' + '.dat.gz', coherence,
+                   delimiter='\t', header=header, comments='')
+        np.savetxt(base_name + '_direction' + '.dat.gz', direction,
+                   delimiter='\t', header=header, comments='')
+        np.savetxt(base_name + '_spread' + '.dat.gz', spread,
+                   delimiter='\t', header=header, comments='')
 
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
 
