@@ -433,7 +433,7 @@ if __name__ == '__main__':
         + '#     image_idx = FFT_window/2 + local_idx * step\n' \
         + '# both, for horizontal and vertical index\n' \
         + '#'
-        base_name, _ = args.file.rsplit(sep='.', maxsplit=1)
+        base_name, _ = args.file.rsplit(sep='/')[-1].rsplit(sep='.')
         np.savetxt(base_name + '_periode' + '.dat.gz', d_value, delimiter='\t', header=header, comments='')
         np.savetxt(base_name + '_coherence' + '.dat.gz', coherence, delimiter='\t', header=header, comments='')
         np.savetxt(base_name + '_direction' + '.dat.gz', direction, delimiter='\t', header=header, comments='')
