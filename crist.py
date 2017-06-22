@@ -443,32 +443,24 @@ if __name__ == '__main__':
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
 
     if ('A' in args.autoscale) or ('D' in args.autoscale):
-        sub_imageplot(d_value, ax1, 'd_values',
-                      np.nanmin(d_value), np.nanmax(d_value))
+        sub_imageplot(d_value, ax1, 'd_values', None, None)
     else:
-        sub_imageplot(d_value, ax1, 'd_values',
-                      args.d_min, args.d_max)
+        sub_imageplot(d_value, ax1, 'd_values', args.d_min, args.d_max)
 
     if ('A' in args.autoscale) or ('C' in args.autoscale):
-        sub_imageplot(coherence, ax2, 'coherence',
-                      np.nanmin(coherence), np.nanmax(coherence))
+        sub_imageplot(coherence, ax2, 'coherence', None, None)
     else:
-        sub_imageplot(coherence, ax2, 'coherence',
-                      0.0, 1.0)
+        sub_imageplot(coherence, ax2, 'coherence', 0.0, 1.0)
 
     if ('A' in args.autoscale) or ('P' in args.autoscale):
-        sub_imageplot(direction, ax3, 'direction',
-                      np.nanmin(direction), np.nanmax(direction))
+        sub_imageplot(direction, ax3, 'direction', None, None)
     else:
-        sub_imageplot(direction, ax3, 'direction',
-                      0.0, np.pi)
+        sub_imageplot(direction, ax3, 'direction', 0.0, np.pi)
 
     if ('A' in args.autoscale) or ('S' in args.autoscale):
-        sub_imageplot(spread, ax4, 'spread',
-                      np.nanmin(spread), np.nanmax(spread))
+        sub_imageplot(spread, ax4, 'spread', None, None)
     else:
-        sub_imageplot(spread, ax4, 'spread',
-                      0.0, 1.0)
+        sub_imageplot(spread, ax4, 'spread', 0.0, 1.0)
 
     plt.tight_layout()
 
