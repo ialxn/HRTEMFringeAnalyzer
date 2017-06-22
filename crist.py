@@ -233,6 +233,7 @@ def determine_lattice_const(s, r_min, r_max):
                           radius)
         # convert to periode
         d = 2.0 * FFT_SIZE2 / d
+        delta_d = 1.0 / delta_d
     else:
         d = float('nan')
         delta_d = float('nan')
