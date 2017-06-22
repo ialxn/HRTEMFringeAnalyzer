@@ -200,12 +200,6 @@ def determine_lattice_const(s, r_min, r_max):
     n_r = int(np.around(10 * (r_max - r_min)))  # ad hoc definition (10)
     dr = (r_max - r_min) / n_r
     #
-    # bin edges to ensure that ``n_r`` bins cover ``r_min`` - ``r_max`` and
-    # include both endpoints
-    #
-    bins = np.linspace(r_min, r_max, n_r + 1, endpoint=True)
-
-    #
     # ``x, y`` are pixel distances relative to origin (center) of ``spec``
     # the offset of 0.5 makes the center lies between pixels and ensures that
     # the distances from center to any of the sides is equal. with the offset
@@ -221,7 +215,7 @@ def determine_lattice_const(s, r_min, r_max):
     # we integrate azimutally, thus noise at large ``r`` contributes more
     # than noise (or signal) at small ``r``
     radius, _ = np.histogram(r.flatten(),
-                             bins=bins,
+                             bins=n_r,
                              weights=s.flatten() / r.flatten()**2)
 
     #
