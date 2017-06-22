@@ -423,11 +423,21 @@ if __name__ == '__main__':
                                                     args.step, args.jobs)
 
     if args.save:
+        header = '#\n' \
+        + '# Results for {} ({}x{} [vxh])\n'.format(args.file, data.shape[0], data.shape[1]) \
+        + '# FFT window: {}x{}\n'.format(args.FFT_size, args.FFT_size) \
+        + '#       step: {}\n'.format(args.step) \
+        + '#\n' \
+        + '# To convert from local indices to indices of original image\n' \
+        + '#\n' \
+        + '#     image_idx = FFT_window/2 + local_idx * step\n' \
+        + '# both, for horizontal and vertical index\n' \
+        + '#'
         base_name, _ = args.file.rsplit(sep='.', maxsplit=1)
-        np.savetxt(base_name + '_periode' + '.dat.gz', d_value, delimiter='\t')
-        np.savetxt(base_name + '_coherence' + '.dat.gz', coherence, delimiter='\t')
-        np.savetxt(base_name + '_direction' + '.dat.gz', direction, delimiter='\t')
-        np.savetxt(base_name + '_spread' + '.dat.gz', spread, delimiter='\t')
+        np.savetxt(base_name + '_periode' + '.dat.gz', d_value, delimiter='\t', header=header, comments='')
+        np.savetxt(base_name + '_coherence' + '.dat.gz', coherence, delimiter='\t', header=header, comments='')
+        np.savetxt(base_name + '_direction' + '.dat.gz', direction, delimiter='\t', header=header, comments='')
+        np.savetxt(base_name + '_spread' + '.dat.gz', spread, delimiter='\t', header=header, comments='')
 
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
 
