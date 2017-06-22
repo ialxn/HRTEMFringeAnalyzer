@@ -400,14 +400,14 @@ if __name__ == '__main__':
                         type=int, default=1,
                         help='Number of threads to be started [1].')
     parser.add_argument('-m', '--d_min', metavar='P.p',
-                        type=float, default=0.0,
-                        help='Minimum period (in pixels) to be evaluated')
+                        type=float, default=2.0,
+                        help='Minimum period (in pixels) to be evaluated [2.0]')
     parser.add_argument('-M', '--d_max', metavar='P.p',
-                        type=float, default=5.0,
-                        help='Maximum period (in pixels) to be evaluated')
+                        type=float, default=20.0,
+                        help='Maximum period (in pixels) to be evaluated [20.0]')
     parser.add_argument('-s', '--step', metavar='S',
-                        type=int, default=25,
-                        help='Step size (x and y) in pixels of moving window')
+                        type=int, default=32,
+                        help='Step size (x and y) in pixels of moving window [32]')
     parser.add_argument('-S', '--save',
                         action='store_true', default=False,
                         help='Store result in gzipped text files')
