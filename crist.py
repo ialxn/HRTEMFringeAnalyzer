@@ -441,7 +441,7 @@ if __name__ == '__main__':
         np.savetxt(base_name + '_spread' + '.dat.gz', spread,
                    delimiter='\t', header=header, comments='')
 
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+    ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
 
     if ('A' in args.autoscale) or ('D' in args.autoscale):
         sub_imageplot(d_value, ax1, 'd_values', None, None)
