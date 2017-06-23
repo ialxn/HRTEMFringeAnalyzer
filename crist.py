@@ -416,7 +416,7 @@ def main():
                         help='Output to file. Supported formats: ' + supported)
     args = parser.parse_args()
 
-    data = imread(args.file)
+    data = imread(args.file, mode='I')
     d_value, coherence, direction, spread = analyze(data,
                                                     args.FFT_size / args.d_max,
                                                     args.FFT_size / args.d_min,
