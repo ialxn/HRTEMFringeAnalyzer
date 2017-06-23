@@ -7,6 +7,8 @@ Created on Fri Jun  2 08:32:42 2017
 """
 import warnings
 
+from argparse import ArgumentParser
+
 from math import sqrt
 import numpy as np
 from numpy.fft import fft2, fftshift
@@ -379,8 +381,6 @@ def sub_imageplot(data, ax, title, vmin, vmax):
     ax.yaxis.set_visible(False)
 
 if __name__ == '__main__':
-    from argparse import ArgumentParser
-
     supported = ','.join(plt.figure().canvas.get_supported_filetypes())
     plt.close()
 
