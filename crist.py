@@ -272,13 +272,16 @@ def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
     phi = np.zeros([Nh])
     delta_phi = np.zeros([Nh])
 
+    h = np.hanning(fft_size)
+    w_han2d = np.sqrt(np.outer(h, h))
+
     for rh, h in enumerate(range(FFT_SIZE2,
                                  im.shape[1] - FFT_SIZE2,
                                  step)):
 
         roi = im[v-FFT_SIZE2 : v+FFT_SIZE2,
                  h-FFT_SIZE2 : h+FFT_SIZE2]
-        spec = fftshift(np.abs(fft2(roi-roi.mean())))
+        spec = fftshift(np.abs(fft2(w_han2d * (roi-roi.mean()))))
         level = noise_floor(spec)
 
         # select pixels that are between ``r_min`` and ``r_max`` pixels away
