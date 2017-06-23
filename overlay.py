@@ -25,7 +25,10 @@ def read_header(fname):
                 break
     return fft_size, step
 
-if __name__ == '__main__':
+
+def main():
+    """"main function
+    """
     supported = ','.join(plt.figure().canvas.get_supported_filetypes())
     plt.close()
 
@@ -53,3 +56,7 @@ if __name__ == '__main__':
         subplot1.contourf(x, y, mat, alpha=0.5, cmap='jet')
         subplot1.set_title(res)
         plt.savefig(args.file + '_' + res + '.' + args.type)
+
+
+if __name__ == '__main__':
+    main()

@@ -380,7 +380,10 @@ def sub_imageplot(data, ax, title, vmin, vmax):
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
 
-if __name__ == '__main__':
+
+def main():
+    """main function
+    """
     supported = ','.join(plt.figure().canvas.get_supported_filetypes())
     plt.close()
 
@@ -474,3 +477,7 @@ if __name__ == '__main__':
             print('Cannot save figure ({})'.format(args.output))
             print('Supported formats: {}'.format(supported))
             plt.show()
+
+
+if __name__ == '__main__':
+    main()
