@@ -340,10 +340,6 @@ def analyze(im, r_min, r_max, fft_size, step, n_jobs):
     # indices rv, rh for result arrays
     Nh = int(np.ceil((im.shape[1] - fft_size) / step))
     Nv = int(np.ceil((im.shape[0] - fft_size) / step))
-    d = np.zeros([Nv, Nh])
-    delta_d = np.zeros([Nv, Nh])
-    phi = np.zeros([Nv, Nh])
-    delta_phi = np.zeros([Nv, Nh])
 
     with Parallel(n_jobs=n_jobs) as parallel:
         res = parallel(delayed(inner_loop)(v,
@@ -352,13 +348,12 @@ def analyze(im, r_min, r_max, fft_size, step, n_jobs):
                                            for rv, v, in enumerate(range(FFT_SIZE2,
                                                                          im.shape[0] - FFT_SIZE2,
                                                                          step)))
-        for j in range(Nv):
-            d[j] = res[j][0]
-            delta_d[j] = res[j][1]
-            phi[j] = res[j][2]
-            delta_phi[j] = res[j][3]
+        d, delta_d, phi, delta_phi = zip(*res)
 
-    return d, delta_d, phi, delta_phi
+    return (np.array(d).reshape(Nv, Nh),
+            np.array(delta_d).reshape(Nv, Nh),
+            np.array(phi).reshape(Nv, Nh),
+            np.array(delta_phi).reshape(Nv, Nh))
 
 
 def sub_imageplot(data, ax, title, vmin, vmax):
