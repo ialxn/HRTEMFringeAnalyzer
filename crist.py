@@ -274,6 +274,15 @@ def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
     phi = np.zeros([Nh])
     delta_phi = np.zeros([Nh])
 
+    # prepare mask to later select pixels that are between ``r_min``
+    # and ``r_max`` pixels away from center of ``spec`` at
+    # ``(FFT_SIZE2, FFT_SIZE2)``.
+    # ``x, y`` are pixel indices relative to origin (cetner) of ``spec``
+    x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
+                    -FFT_SIZE2 : FFT_SIZE2]
+    r2 = x*x + y*y
+    mask = ~((r2 > R_MIN2) & (r2 < R_MAX2))
+
     h = np.hanning(fft_size)
     w_han2d = np.sqrt(np.outer(h, h))
 
@@ -286,17 +295,7 @@ def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
         spec = fftshift(np.abs(fft2(w_han2d * (roi-roi.mean()))))
         level = noise_floor(spec)
 
-        # select pixels that are between ``r_min`` and ``r_max`` pixels away
-        # from center of ``spec`` at ``(FFT_SIZE2, FFT_SIZE2)`` i.e. set
-        # other pixels to zero.
-        #
-        # r_min^2 < (i-FFT_SIZE2)^2 + (i-FFT_SIZE2)^2 < r_max^2
-
-        # ``x, y`` are pixel indices relative to origin (cetner) of ``spec``
-        x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
-                        -FFT_SIZE2 : FFT_SIZE2]
-        r2 = x*x + y*y
-        spec[~((r2 > R_MIN2) & (r2 < R_MAX2))] = 0
+        spec[mask] = 0
         # only pixels between ``r_min`` and ``r_max`` are non-zero
         # set all pixels below noise floor ``level`` to zero
         spec[spec <= level] = 0
