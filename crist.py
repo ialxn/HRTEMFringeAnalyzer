@@ -295,7 +295,8 @@ def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
         # ``x, y`` are pixel indices relative to origin (cetner) of ``spec``
         x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
                         -FFT_SIZE2 : FFT_SIZE2]
-        spec[~((x*x + y*y > R_MIN2) & (x*x + y*y < R_MAX2))] = 0
+        r2 = x*x + y*y
+        spec[~((r2 > R_MIN2) & (r2 < R_MAX2))] = 0
         # only pixels between ``r_min`` and ``r_max`` are non-zero
         # set all pixels below noise floor ``level`` to zero
         spec[spec <= level] = 0
