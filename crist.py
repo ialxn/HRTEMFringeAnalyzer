@@ -210,15 +210,15 @@ def determine_lattice_const(s, r_min, r_max):
     #
     x, y = np.ogrid[-FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5,
                     -FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5]
-    r = np.sqrt(x*x + y*y)
+    r2 = x*x + y*y
 
     #
     # weights should  include 1/r^2
     # we integrate azimutally, thus noise at large ``r`` contributes more
     # than noise (or signal) at small ``r``
-    radius, _ = np.histogram(r.flatten(),
+    radius, _ = np.histogram(np.sqrt(r2).flatten(),
                              bins=n_r,
-                             weights=s.flatten() / r.flatten()**2)
+                             weights=s.flatten() / r2.flatten())
 
     #
     # calculate noise level from mean of last 3 values
