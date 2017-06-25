@@ -108,13 +108,14 @@ def FWHH(x, y):
     return max_value, delta_value
 
 
-def noise_floor(s):
+def noise_floor(s, r2):
     """Determine aproximate noise floor of FFT ``s``
 
     Parameters:
         s : np array
             Window to be analyzed
-
+        r2 : np.array
+            squared distances of data points to center of ``s``
 
     Ad-hoc definition of the noise floor:
         + use all data in cornes of 2D FFT (i.e. outside of circle
@@ -133,21 +134,21 @@ def noise_floor(s):
     # to the center of the pixels.
     FFT_SIZE2 = s.shape[0]//2
     R2 = FFT_SIZE2 * FFT_SIZE2
-    x, y = np.ogrid[-FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5,
-                    -FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5]
-    mask = ((x*x + y*y) >= R2)
+    mask = (r2 >= R2)
     mean = s[mask].mean()
     error = s[mask].std()
 
     return mean + 3.0 * error
 
 
-def analyze_direction(s):
+def analyze_direction(s, r2):
     """Determine direction of periodicy in image ``s``
 
     Parameters:
         s : np.array
             2D Fourier transform
+        r2 : np.array
+            squared distances of data points to center of ``s``
 
     Returns
         phi_max : float
@@ -166,7 +167,6 @@ def analyze_direction(s):
     x, y = np.ogrid[-FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5,
                     -FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5]
     phi = np.arctan2(x, y)
-    r2 = x*x + y*y
     # map -pi..0 to 0..pi because of symmetrie
     phi[phi < 0] += np.pi
 
@@ -182,7 +182,7 @@ def analyze_direction(s):
     return phi_max, delta_phi
 
 
-def determine_lattice_const(s, r_min, r_max):
+def determine_lattice_const(s, r_min, r_max, r2):
     """Determine lattice constant and coherence lenght from FFT. All calculations
     in pixel numbers.
 
@@ -191,6 +191,8 @@ def determine_lattice_const(s, r_min, r_max):
             2D Fourier transform.
         r_min, r_max : float
             only data between ``r_min`` and ``r_max`` are non-zero (valid)
+        r2 : np.array
+            squared distances of data points to center of ``s``
 
     Returns
         d : float
@@ -201,17 +203,6 @@ def determine_lattice_const(s, r_min, r_max):
     FFT_SIZE2 = s.shape[0]//2
     n_r = int(np.around(10 * (r_max - r_min)))  # ad hoc definition (10)
     dr = (r_max - r_min) / n_r
-    #
-    # ``x, y`` are pixel distances relative to origin (center) of ``spec``
-    # the offset of 0.5 makes the center lies between pixels and ensures that
-    # the distances from center to any of the sides is equal. with the offset
-    # the minimum radius is 0.5 pixels, i.e. we are measuring the distance
-    # to the center of the pixels.
-    #
-    x, y = np.ogrid[-FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5,
-                    -FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5]
-    r2 = x*x + y*y
-
     #
     # weights should  include 1/r^2
     # we integrate azimutally, thus noise at large ``r`` contributes more
@@ -283,6 +274,17 @@ def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
     r2 = x*x + y*y
     mask = ~((r2 > R_MIN2) & (r2 < R_MAX2))
 
+    #
+    # ``x, y`` are pixel distances relative to origin (center) of ``spec``
+    # the offset of 0.5 makes the center lies between pixels and ensures that
+    # the distances from center to any of the sides is equal. with the offset
+    # the minimum radius is 0.5 pixels, i.e. we are measuring the distance
+    # to the center of the pixels.
+    #
+    x, y = np.ogrid[-FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5,
+                    -FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5]
+    r2 = x*x + y*y
+
     h = np.hanning(fft_size)
     w_han2d = np.sqrt(np.outer(h, h))
 
@@ -293,15 +295,15 @@ def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
         roi = im[v-FFT_SIZE2 : v+FFT_SIZE2,
                  h-FFT_SIZE2 : h+FFT_SIZE2]
         spec = fftshift(np.abs(fft2(w_han2d * (roi-roi.mean()))))
-        level = noise_floor(spec)
+        level = noise_floor(spec, r2)
 
         spec[mask] = 0
         # only pixels between ``r_min`` and ``r_max`` are non-zero
         # set all pixels below noise floor ``level`` to zero
         spec[spec <= level] = 0
 
-        d[rh], delta_d[rh] = determine_lattice_const(spec, r_min, r_max)
-        phi[rh], delta_phi[rh] = analyze_direction(spec)
+        d[rh], delta_d[rh] = determine_lattice_const(spec, r_min, r_max, r2)
+        phi[rh], delta_phi[rh] = analyze_direction(spec, r2)
 
     return (d, delta_d, phi, delta_phi)
 
