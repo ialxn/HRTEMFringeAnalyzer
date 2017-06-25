@@ -48,7 +48,7 @@ def gaussian(x, *p):
     return A * np.exp(-(x - mu)**2 / (2.0 * sigma**2)) + offset
 
 
-def FWHH(x, y):
+def find_peak(x, y):
     """Calculate peak and FWHH of ``y(x)`` by fitting a parabola
     to the region around the maximum.
 
@@ -108,13 +108,13 @@ def FWHH(x, y):
     return max_value, delta_value
 
 
-def noise_floor(s, r2):
-    """Determine aproximate noise floor of FFT ``s``
+def noise_floor(window, radius_squared):
+    """Determine aproximate noise floor of FFT ``window``
 
     Parameters:
-        s : np array
+        window : np array
             Window to be analyzed
-        r2 : np.array
+        radius_squared : np.array
             squared distances of data points to center of ``s``
 
     Ad-hoc definition of the noise floor:
@@ -125,29 +125,28 @@ def noise_floor(s, r2):
 
     Returns
         noise_floor : float
-            Mean + 3*sigma
+            mean + 3*sigma
     """
     # ``x, y`` are pixel distances relative to origin (center) of ``spec``
     # the offset of 0.5 makes the center lies between pixels and ensures that
     # the distances from center to any of the sides is equal. with the offset
     # the minimum radius is 0.5 pixels, i.e. we are measuring the distance
     # to the center of the pixels.
-    FFT_SIZE2 = s.shape[0]//2
-    R2 = FFT_SIZE2 * FFT_SIZE2
-    mask = (r2 >= R2)
-    mean = s[mask].mean()
-    error = s[mask].std()
+    mask = (radius_squared >= (window.shape[0]//2)**2)
+    mean = window[mask].mean()
+    error = window[mask].std()
 
     return mean + 3.0 * error
 
 
-def analyze_direction(s, r2):
-    """Determine direction of periodicy in image ``s``
+def analyze_direction(window, radius_squared):
+    """Find peak in FFT window ``window`` and return its direction
+    and angular spread
 
     Parameters:
-        s : np.array
+        window : np.array
             2D Fourier transform
-        r2 : np.array
+        radius_squared : np.array
             squared distances of data points to center of ``s``
 
     Returns
@@ -156,9 +155,9 @@ def analyze_direction(s, r2):
         delta_phi : float
             FWHH of `phi_max``
     """
-    FFT_SIZE2 = s.shape[0]//2
-    N_BINS = 18 # 10 degrees per bin
-    dphi = 2.0 * np.pi / N_BINS
+    FFT_SIZE2 = window.shape[0]//2
+    bins = 18 # 10 degrees per bin
+    dphi =  np.pi / bins
     # ``x, y`` are pixel distances relative to origin (center) of ``spec``
     # the offset of 0.5 makes the center lies between pixels and ensures that
     # the distances from center to any of the sides is equal. with the offset
@@ -170,11 +169,12 @@ def analyze_direction(s, r2):
     # map -pi..0 to 0..pi because of symmetrie
     phi[phi < 0] += np.pi
 
-    d, _ = np.histogram(phi.flatten(), bins=N_BINS, weights=s.flatten() / r2.flatten())
+    d, _ = np.histogram(phi.flatten(), bins=bins,
+                        weights=window.flatten() / radius_squared.flatten())
 
     if d.max() > 1.5 * np.nanmean(d):
         #   significant peak
-        phi_max, delta_phi = FWHH(np.linspace(0.5*dphi, np.pi - 0.5*dphi, num=N_BINS), d)
+        phi_max, delta_phi = find_peak(np.linspace(dphi, np.pi - dphi, num=bins), d)
     else:
         phi_max = float('nan')
         delta_phi = float('nan')
@@ -182,16 +182,16 @@ def analyze_direction(s, r2):
     return phi_max, delta_phi
 
 
-def determine_lattice_const(s, r_min, r_max, r2):
+def determine_lattice_const(window, r_min, r_max, radius_squared):
     """Determine lattice constant and coherence lenght from FFT. All calculations
     in pixel numbers.
 
     Parameters:
-        s : np.array
+        window : np.array
             2D Fourier transform.
         r_min, r_max : float
             only data between ``r_min`` and ``r_max`` are non-zero (valid)
-        r2 : np.array
+        radius_squard : np.array
             squared distances of data points to center of ``s``
 
     Returns
@@ -200,26 +200,24 @@ def determine_lattice_const(s, r_min, r_max, r2):
         delta_d : float
             Coherence length (length of periodic structure) as A.U.
     """
-    FFT_SIZE2 = s.shape[0]//2
-    n_r = int(np.around(10 * (r_max - r_min)))  # ad hoc definition (10)
-    dr = (r_max - r_min) / n_r
+    bins = int(np.around(10 * (r_max - r_min)))  # ad hoc definition (10)
+    dr = 0.5 * (r_max - r_min) / bins
     #
     # weights should  include 1/r^2
     # we integrate azimutally, thus noise at large ``r`` contributes more
     # than noise (or signal) at small ``r``
-    radius, _ = np.histogram(np.sqrt(r2).flatten(),
-                             bins=n_r,
-                             weights=s.flatten() / r2.flatten())
+    radius, _ = np.histogram(np.sqrt(radius_squared).flatten(),
+                             bins=bins,
+                             weights=window.flatten() / radius_squared.flatten())
 
     #
     # calculate noise level from mean of last 3 values
     #
     if radius.max() > 2.0 * np.nanmean(radius):
         # significant peak
-        d, delta_d = FWHH(np.linspace(r_min + 0.5*dr, r_max -0.5*dr, num=n_r),
-                          radius)
+        d, delta_d = find_peak(np.linspace(r_min + dr, r_max - dr, num=bins), radius)
         # convert to periode
-        d = 2.0 * FFT_SIZE2 / d
+        d = window.shape[0] / d
         delta_d = 1.0 / delta_d
     else:
         d = float('nan')
@@ -256,8 +254,8 @@ def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
         delta_phi : np array
             Spread of direction vector
     """
-    R_MIN2 = r_min**2
-    R_MAX2 = r_max**2
+    r2_min = r_min**2
+    r2_max = r_max**2
     fft_size = FFT_SIZE2 * 2
     Nh = int(np.ceil((im.shape[1] - fft_size) / step))
     d = np.zeros([Nh])
@@ -272,7 +270,7 @@ def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
     x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
                     -FFT_SIZE2 : FFT_SIZE2]
     r2 = x*x + y*y
-    mask = ~((r2 > R_MIN2) & (r2 < R_MAX2))
+    mask = ~((r2 > r2_min) & (r2 < r2_max))
 
     #
     # ``x, y`` are pixel distances relative to origin (center) of ``spec``
@@ -285,8 +283,8 @@ def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
                     -FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5]
     r2 = x*x + y*y
 
-    h = np.hanning(fft_size)
-    w_han2d = np.sqrt(np.outer(h, h))
+    han = np.hanning(fft_size)
+    w_han2d = np.sqrt(np.outer(han, han))
 
     for rh, h in enumerate(range(FFT_SIZE2,
                                  im.shape[1] - FFT_SIZE2,
