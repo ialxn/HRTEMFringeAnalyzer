@@ -157,7 +157,7 @@ def analyze_direction(window, radius_squared):
     """
     FFT_SIZE2 = window.shape[0]//2
     bins = 18 # 10 degrees per bin
-    dphi =  np.pi / bins
+    dphi = np.pi / bins
     # ``x, y`` are pixel distances relative to origin (center) of ``spec``
     # the offset of 0.5 makes the center lies between pixels and ensures that
     # the distances from center to any of the sides is equal. with the offset
@@ -254,8 +254,6 @@ def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
         delta_phi : np array
             Spread of direction vector
     """
-    r2_min = r_min**2
-    r2_max = r_max**2
     fft_size = FFT_SIZE2 * 2
     Nh = int(np.ceil((im.shape[1] - fft_size) / step))
     d = np.zeros([Nh])
@@ -270,7 +268,7 @@ def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
     x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
                     -FFT_SIZE2 : FFT_SIZE2]
     r2 = x*x + y*y
-    mask = ~((r2 > r2_min) & (r2 < r2_max))
+    mask = ~((r2 > r_min**2) & (r2 < r_max**2))
 
     #
     # ``x, y`` are pixel distances relative to origin (center) of ``spec``
