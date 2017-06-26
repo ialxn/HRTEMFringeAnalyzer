@@ -21,7 +21,7 @@ from joblib import Parallel, delayed
 
 import matplotlib.pyplot as plt
 
-__version__ = 'v1.0'
+__version__ = ''
 #
 # for jacoby
 # ddA = 1

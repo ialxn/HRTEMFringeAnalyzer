@@ -11,6 +11,8 @@ import numpy as np
 from scipy.misc import imread
 import matplotlib.pyplot as plt
 
+__version__ = ''
+
 def read_header(fname):
     """Reads ``fft_size`` and ``step`` from compressed output ```fname``
     """
