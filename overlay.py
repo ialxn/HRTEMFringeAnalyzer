@@ -37,7 +37,7 @@ def main():
     parser = ArgumentParser(description='Analyze local cristallinity of data')
     parser.add_argument('-f', '--file', metavar='FILE',
                         type=str, required=True,
-                        help='Base name of data file')
+                        help='Base name of data file (.tif). Remove outliers (bright and dark) before.')
     parser.add_argument('-t', '--type', metavar='TYPE',
                         type=str, default='pdf',
                         help='Graphics type of output files [pdf]. Supported formats: ' + supported)

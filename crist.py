@@ -387,7 +387,7 @@ def main():
                         help='autoscale color bar [DCPSA]')
     parser.add_argument('-f', '--file', metavar='FILE',
                         type=str, required=True,
-                        help='Name of data file')
+                        help='Name of data file. Remove outliers (bright and dark) before.')
     parser.add_argument('-F', '--FFT_size', metavar='N',
                         type=int, default=128,
                         help='Size of moving window (NxN) [128].')
