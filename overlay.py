@@ -50,7 +50,6 @@ def main():
     for res in ('direction', 'coherence', 'periode', 'spread'):
         mat = np.loadtxt(args.file + '_' + res + '.dat.gz')
         plt.figure()
-        plt.subplots_adjust(left=0.10, right=1.00, top=0.90, bottom=0.06, hspace=0.30)
         subplot1 = plt.subplot(111)
         subplot1.imshow(image, extent=None, aspect='equal', cmap='gray')
         x = np.arange(window // 2, image.shape[1] - window // 2, inc)
