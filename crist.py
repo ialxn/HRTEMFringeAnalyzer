@@ -409,7 +409,7 @@ def main():
     parser.add_argument('-o', '--output', metavar='FILE', type=str,
                         help='Output to file. Supported formats: ' + supported)
     parser.add_argument('-v', '--version', action='version',
-                    version='%(prog)s {version}'.format(version=__version__))
+                        version='%(prog)s {version}'.format(version=__version__))
     args = parser.parse_args()
 
     data = imread(args.file, mode='I')
