@@ -155,8 +155,7 @@ def analyze_direction(window, radius_squared, phi):
         delta_phi : float
             FWHH of ``omega``
     """
-    bins = 18 # 10 degrees per bin
-
+    bins = 36 # 10 degrees per bin
     d, edges = np.histogram(phi.flatten(), bins=bins,
                             weights=window.flatten() / radius_squared.flatten())
 
@@ -196,7 +195,7 @@ def determine_lattice_const(window, radius_squared):
         delta_d : float
             Coherence length (length of periodic structure) as A.U.
     """
-    bins = 20  # ad hoc definition
+    bins = 40  # ad hoc definition
     #
     # weights should  include 1/r^2
     # we integrate azimutally, thus noise at large ``r`` contributes more
