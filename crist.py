@@ -183,15 +183,13 @@ def analyze_direction(window, radius_squared):
     return phi_max, delta_phi
 
 
-def determine_lattice_const(window, r_min, r_max, radius_squared):
+def determine_lattice_const(window, radius_squared):
     """Determine lattice constant and coherence lenght from FFT. All calculations
     in pixel numbers.
 
     Parameters:
         window : np.array
             2D Fourier transform.
-        r_min, r_max : float
-            only data between ``r_min`` and ``r_max`` are non-zero (valid)
         radius_squard : np.array
             squared distances of data points to center of ``s``
 
@@ -201,22 +199,20 @@ def determine_lattice_const(window, r_min, r_max, radius_squared):
         delta_d : float
             Coherence length (length of periodic structure) as A.U.
     """
-    bins = int(np.around(10 * (r_max - r_min)))  # ad hoc definition (10)
-    dr = 0.5 * (r_max - r_min) / bins
+    bins = 20  # ad hoc definition
     #
     # weights should  include 1/r^2
     # we integrate azimutally, thus noise at large ``r`` contributes more
     # than noise (or signal) at small ``r``
-    radius, _ = np.histogram(np.sqrt(radius_squared).flatten(),
-                             bins=bins,
-                             weights=window.flatten() / radius_squared.flatten())
+    radius, edges = np.histogram(np.sqrt(radius_squared).flatten(),
+                                 bins=bins,
+                                 weights=window.flatten() / radius_squared.flatten())
 
-    #
-    # calculate noise level from mean of last 3 values
-    #
     if np.nanmax(radius) > 2.0 * np.nanmean(radius):
         # significant peak
-        d, delta_d = find_peak(np.linspace(r_min + dr, r_max - dr, num=bins), radius)
+        # replace boundaries by center of bins
+        edges += 0.5 * (edges[1] - edges[0])
+        d, delta_d = find_peak(edges[:-1], np.nan_to_num(radius))
         # convert to periode
         d = window.shape[0] / d
         delta_d = 1.0 / delta_d
@@ -227,7 +223,7 @@ def determine_lattice_const(window, r_min, r_max, radius_squared):
     return d, delta_d
 
 
-def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
+def inner_loop(v, im, FFT_SIZE2, step):
     """
     Analyzes horizontal line ``v`` in image ``im``
 
@@ -241,8 +237,6 @@ def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
         step : int
             Horizontal (and vertical) step size to translate
             window
-        r_min, r_max : float
-            Minimum / maximum frequency to be analyzed
 
     Returns
         List of np arrays of length ``Nh``
@@ -269,7 +263,7 @@ def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
     x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
                     -FFT_SIZE2 : FFT_SIZE2]
     r2 = x*x + y*y
-    mask = ~((r2 > r_min**2) & (r2 < r_max**2))
+    mask = ~((r2 > 16) & (r2 < FFT_SIZE2**2))
 
     #
     # ``x, y`` are pixel distances relative to origin (center) of ``spec``
@@ -299,22 +293,18 @@ def inner_loop(v, im, FFT_SIZE2, step, r_min, r_max):
         # set all pixels below noise floor ``level`` to zero
         spec[spec <= level] = 0
 
-        d[rh], delta_d[rh] = determine_lattice_const(spec, r_min, r_max, r2)
+        d[rh], delta_d[rh] = determine_lattice_const(spec, r2)
         phi[rh], delta_phi[rh] = analyze_direction(spec, r2)
 
     return (d, delta_d, phi, delta_phi)
 
 
-def analyze(im, r_min, r_max, fft_size, step, n_jobs):
+def analyze(im, fft_size, step, n_jobs):
     """Analyze local crystallinity of image ``im``
 
     Parameters:
         im : np array
             Image to be analyzed.
-        r_min, r_max : float
-            Minimum, maximum of frequency (in pixels of FFT) to be analyzed.
-            Calculated form min/max of period to be analyzed as
-            freq = fft_size / period
         fft_size : int
             Size of window to be analyzed (must be 2^N)
         step : int
@@ -342,8 +332,8 @@ def analyze(im, r_min, r_max, fft_size, step, n_jobs):
 
     with Parallel(n_jobs=n_jobs) as parallel:
         res = parallel(delayed(inner_loop)(v,
-                                           im, FFT_SIZE2, step,
-                                           r_min, r_max) \
+                                           im,
+                                           FFT_SIZE2, step) \
                                            for rv, v, in enumerate(range(FFT_SIZE2,
                                                                          im.shape[0] - FFT_SIZE2,
                                                                          step)))
@@ -394,12 +384,6 @@ def main():
     parser.add_argument('-j', '--jobs', metavar='N',
                         type=int, default=1,
                         help='Number of threads to be started [1].')
-    parser.add_argument('-m', '--d_min', metavar='P.p',
-                        type=float, default=2.0,
-                        help='Minimum period (in pixels) to be evaluated [2.0]')
-    parser.add_argument('-M', '--d_max', metavar='P.p',
-                        type=float, default=20.0,
-                        help='Maximum period (in pixels) to be evaluated [20.0]')
     parser.add_argument('-s', '--step', metavar='S',
                         type=int, default=32,
                         help='Step size (x and y) in pixels of moving window [32]')
@@ -414,10 +398,9 @@ def main():
 
     data = imread(args.file, mode='I')
     d_value, coherence, direction, spread = analyze(data,
-                                                    args.FFT_size / args.d_max,
-                                                    args.FFT_size / args.d_min,
                                                     args.FFT_size,
-                                                    args.step, args.jobs)
+                                                    args.step,
+                                                    args.jobs)
 
     if args.save:
         header = '#\n' \
