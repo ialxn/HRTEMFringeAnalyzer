@@ -65,8 +65,8 @@ def find_peak(x, y):
         delta_value : float
             FWHH
     """
-    idx_max = y.argmax()
-    m = np.isfinite(y)
+    idx_max = np.nanargmax(y)
+    m = np.isfinite(y)  # mask that contains only finite entries
     if len(m) < 4:
         # not enough data for fit, return x for which y is maximum
         max_value = x[idx_max]
@@ -75,7 +75,7 @@ def find_peak(x, y):
         p0 = [y[idx_max],
               x[idx_max],
               x[m].ptp() / 4.0,
-              np.nanmean(y)]
+              y[m].mean()]
         try:
             warnings.simplefilter('ignore', OptimizeWarning)
             coeffs, cov = curve_fit(gaussian,
@@ -173,7 +173,7 @@ def analyze_direction(window, radius_squared):
     d, _ = np.histogram(phi.flatten(), bins=bins,
                         weights=window.flatten() / radius_squared.flatten())
 
-    if d.max() > 1.5 * np.nanmean(d):
+    if np.nanmax(d) > 1.5 * np.nanmean(d):
         #   significant peak
         phi_max, delta_phi = find_peak(np.linspace(dphi, np.pi - dphi, num=bins), d)
     else:
@@ -214,7 +214,7 @@ def determine_lattice_const(window, r_min, r_max, radius_squared):
     #
     # calculate noise level from mean of last 3 values
     #
-    if radius.max() > 2.0 * np.nanmean(radius):
+    if np.nanmax(radius) > 2.0 * np.nanmean(radius):
         # significant peak
         d, delta_d = find_peak(np.linspace(r_min + dr, r_max - dr, num=bins), radius)
         # convert to periode
