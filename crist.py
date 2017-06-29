@@ -220,7 +220,7 @@ def determine_lattice_const(window, radius_squared):
     return d, delta_d
 
 
-def inner_loop(v, im, FFT_SIZE2, step, r2, phi, mask, han2d):
+def inner_loop(v, im, fft_size, step, r2, phi, mask, han2d):
     """
     Analyzes horizontal line ``v`` in image ``im``
 
@@ -229,8 +229,8 @@ def inner_loop(v, im, FFT_SIZE2, step, r2, phi, mask, han2d):
             Line number (horizontal index) to be analyzed
         im : np array
             Image to be analyzed
-        FFT_SIZE2 : int
-            Half width of window to be analyzed
+        fft_size : int
+            width of window to be analyzed (2^N x 2^N)
         step : int
             Horizontal (and vertical) step size to translate
             window
@@ -257,7 +257,7 @@ def inner_loop(v, im, FFT_SIZE2, step, r2, phi, mask, han2d):
         delta_omega : np array
             Spread of direction vector
     """
-    fft_size = FFT_SIZE2 * 2
+    FFT_SIZE2 = fft_size//2
     Nh = int(np.ceil((im.shape[1] - fft_size) / step))
     d = np.zeros([Nh])
     delta_d = np.zeros([Nh])
@@ -338,7 +338,7 @@ def analyze(im, fft_size, step, n_jobs):
     with Parallel(n_jobs=n_jobs) as parallel:
         res = parallel(delayed(inner_loop)(v,
                                            im,
-                                           FFT_SIZE2, step,
+                                           fft_size, step,
                                            r2, phi, mask, han2d) \
                                            for rv, v, in enumerate(range(FFT_SIZE2,
                                                                          im.shape[0] - FFT_SIZE2,
