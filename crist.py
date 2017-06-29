@@ -50,7 +50,7 @@ def gaussian(x, *p):
 
 
 def find_peak(x, y):
-    """Calculate peak and FWHH of ``y(x)`` by fitting a parabola
+    """Calculate peak and FWHH of ``y(x)`` by fitting a gaussian plus offset
     to the region around the maximum.
 
     Parameters:
@@ -128,11 +128,6 @@ def noise_floor(window, radius_squared):
         noise_floor : float
             mean + 3*sigma
     """
-    # ``x, y`` are pixel distances relative to origin (center) of ``spec``
-    # the offset of 0.5 makes the center lies between pixels and ensures that
-    # the distances from center to any of the sides is equal. with the offset
-    # the minimum radius is 0.5 pixels, i.e. we are measuring the distance
-    # to the center of the pixels.
     mask = (radius_squared >= (window.shape[0]//2)**2)
     mean = window[mask].mean()
     error = window[mask].std()
@@ -148,7 +143,11 @@ def analyze_direction(window, radius_squared, phi):
         window : np.array
             2D Fourier transform
         radius_squared : np.array
-            squared distances of data points to center of ``s``
+            squared distances of each pixel in the 2D FFT relative to the one
+            that represents the zero frequency
+        phi : np.array
+            angle of each pixel in 2D FFT relative to the pixel that
+            represents the zero frequency
 
     Returns
         omega : float
@@ -187,8 +186,9 @@ def determine_lattice_const(window, radius_squared):
     Parameters:
         window : np.array
             2D Fourier transform.
-        radius_squard : np.array
-            squared distances of data points to center of ``s``
+        radius_squared : np.array
+            squared distances of each pixel in the 2D FFT relative to the one
+            that represents the zero frequency
 
     Returns
         d : float
@@ -234,6 +234,17 @@ def inner_loop(v, im, FFT_SIZE2, step, r2, phi, mask, han2d):
         step : int
             Horizontal (and vertical) step size to translate
             window
+        r2 : np.array
+            squared distances of each pixel in the 2D FFT relative to the one
+            that represents the zero frequency
+        phi : np.array
+            angle of each pixel in 2D FFT relative to the pixel that
+            represents the zero frequency
+        mask : np.array
+            mask that discards very low frequencies (index 1,2) and high
+            frequencies (indices above FFT_SIZE2)
+        han2d : np.array
+            2D Hanning window applied to roi before the 2D FFT
 
     Returns
         List of np arrays of length ``Nh``
@@ -263,8 +274,6 @@ def inner_loop(v, im, FFT_SIZE2, step, r2, phi, mask, han2d):
         level = noise_floor(spec, r2)
 
         spec[mask] = 0
-        # only pixels between ``r_min`` and ``r_max`` are non-zero
-        # set all pixels below noise floor ``level`` to zero
         spec[spec <= level] = 0
 
         d[rh], delta_d[rh] = determine_lattice_const(spec, r2)
