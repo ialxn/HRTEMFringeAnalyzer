@@ -156,6 +156,7 @@ def analyze_direction(window, radius_squared, phi):
             FWHH of ``omega``
     """
     bins = 36 # 10 degrees per bin
+    warnings.simplefilter('ignore', RuntimeWarning)
     d, edges = np.histogram(phi.flatten(), bins=bins,
                             weights=window.flatten() / radius_squared.flatten())
 
@@ -200,6 +201,7 @@ def determine_lattice_const(window, radius_squared):
     # weights should  include 1/r^2
     # we integrate azimutally, thus noise at large ``r`` contributes more
     # than noise (or signal) at small ``r``
+    warnings.simplefilter('ignore', RuntimeWarning)
     radius, edges = np.histogram(np.sqrt(radius_squared).flatten(),
                                  bins=bins,
                                  weights=window.flatten() / radius_squared.flatten())
