@@ -436,7 +436,7 @@ def main():
     if ('A' in args.autoscale) or ('D' in args.autoscale):
         sub_imageplot(d_value, ax1, 'd_values', None, None)
     else:
-        sub_imageplot(d_value, ax1, 'd_values', args.d_min, args.d_max)
+        sub_imageplot(d_value, ax1, 'd_values', 0.0, 20.0)
 
     if ('A' in args.autoscale) or ('C' in args.autoscale):
         sub_imageplot(coherence, ax2, 'coherence', None, None)
