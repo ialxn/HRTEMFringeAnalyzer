@@ -140,7 +140,7 @@ def noise_floor(window, radius_squared):
     return mean + 3.0 * error
 
 
-def analyze_direction(window, radius_squared):
+def analyze_direction(window, radius_squared, phi):
     """Find peak in FFT window ``window`` and return its direction
     and angular spread
 
@@ -151,36 +151,25 @@ def analyze_direction(window, radius_squared):
             squared distances of data points to center of ``s``
 
     Returns
-        phi_max : float
+        omega : float
             predominant direction of periodicity (0..pi)
         delta_phi : float
-            FWHH of `phi_max``
+            FWHH of ``omega``
     """
-    FFT_SIZE2 = window.shape[0]//2
     bins = 18 # 10 degrees per bin
     dphi = np.pi / bins
-    # ``x, y`` are pixel distances relative to origin (center) of ``spec``
-    # the offset of 0.5 makes the center lies between pixels and ensures that
-    # the distances from center to any of the sides is equal. with the offset
-    # the minimum radius is 0.5 pixels, i.e. we are measuring the distance
-    # to the center of the pixels.
-    x, y = np.ogrid[-FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5,
-                    -FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5]
-    phi = np.arctan2(x, y)
-    # map -pi..0 to 0..pi because of symmetrie
-    phi[phi < 0] += np.pi
 
     d, _ = np.histogram(phi.flatten(), bins=bins,
                         weights=window.flatten() / radius_squared.flatten())
 
     if np.nanmax(d) > 1.5 * np.nanmean(d):
         #   significant peak
-        phi_max, delta_phi = find_peak(np.linspace(dphi, np.pi - dphi, num=bins), d)
+        omega, delta_omega = find_peak(np.linspace(dphi, np.pi - dphi, num=bins), d)
     else:
-        phi_max = float('nan')
-        delta_phi = float('nan')
+        omega = float('nan')
+        delta_omega = float('nan')
 
-    return phi_max, delta_phi
+    return omega, delta_omega
 
 
 def determine_lattice_const(window, radius_squared):
@@ -223,7 +212,7 @@ def determine_lattice_const(window, radius_squared):
     return d, delta_d
 
 
-def inner_loop(v, im, FFT_SIZE2, step):
+def inner_loop(v, im, FFT_SIZE2, step, r2, phi, mask, han2d):
     """
     Analyzes horizontal line ``v`` in image ``im``
 
@@ -244,40 +233,17 @@ def inner_loop(v, im, FFT_SIZE2, step):
             Periode found
         delta_d : np array
             Coherence length (length of periodic structure) as A.U.
-        phi : np array
+        omega : np array
             Direction of lattice (direction) vector of periodic structure
-        delta_phi : np array
+        delta_omega : np array
             Spread of direction vector
     """
     fft_size = FFT_SIZE2 * 2
     Nh = int(np.ceil((im.shape[1] - fft_size) / step))
     d = np.zeros([Nh])
     delta_d = np.zeros([Nh])
-    phi = np.zeros([Nh])
-    delta_phi = np.zeros([Nh])
-
-    # prepare mask to later select pixels that are between ``r_min``
-    # and ``r_max`` pixels away from center of ``spec`` at
-    # ``(FFT_SIZE2, FFT_SIZE2)``.
-    # ``x, y`` are pixel indices relative to origin (cetner) of ``spec``
-    x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
-                    -FFT_SIZE2 : FFT_SIZE2]
-    r2 = x*x + y*y
-    mask = ~((r2 > 16) & (r2 < FFT_SIZE2**2))
-
-    #
-    # ``x, y`` are pixel distances relative to origin (center) of ``spec``
-    # the offset of 0.5 makes the center lies between pixels and ensures that
-    # the distances from center to any of the sides is equal. with the offset
-    # the minimum radius is 0.5 pixels, i.e. we are measuring the distance
-    # to the center of the pixels.
-    #
-    x, y = np.ogrid[-FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5,
-                    -FFT_SIZE2 + 0.5 : FFT_SIZE2 + 0.5]
-    r2 = x*x + y*y
-
-    han = np.hanning(fft_size)
-    w_han2d = np.sqrt(np.outer(han, han))
+    omega = np.zeros([Nh])
+    delta_omega = np.zeros([Nh])
 
     for rh, h in enumerate(range(FFT_SIZE2,
                                  im.shape[1] - FFT_SIZE2,
@@ -285,7 +251,7 @@ def inner_loop(v, im, FFT_SIZE2, step):
 
         roi = im[v-FFT_SIZE2 : v+FFT_SIZE2,
                  h-FFT_SIZE2 : h+FFT_SIZE2]
-        spec = fftshift(np.abs(fft2(w_han2d * (roi-roi.mean()))))
+        spec = fftshift(np.abs(fft2(han2d * (roi-roi.mean()))))
         level = noise_floor(spec, r2)
 
         spec[mask] = 0
@@ -294,9 +260,9 @@ def inner_loop(v, im, FFT_SIZE2, step):
         spec[spec <= level] = 0
 
         d[rh], delta_d[rh] = determine_lattice_const(spec, r2)
-        phi[rh], delta_phi[rh] = analyze_direction(spec, r2)
+        omega[rh], delta_omega[rh] = analyze_direction(spec, r2, phi)
 
-    return (d, delta_d, phi, delta_phi)
+    return (d, delta_d, omega, delta_omega)
 
 
 def analyze(im, fft_size, step, n_jobs):
@@ -317,9 +283,9 @@ def analyze(im, fft_size, step, n_jobs):
             Periode
         delta_d : np array
             Coherence length (length of periodic structure) as A.U.
-        phi : np array
+        omega : np array
             Direction of lattice (direction) vector of periodic structure
-        delta_phi : np array
+        delta_omega : np array
             Spread of direction vector
     """
     FFT_SIZE2 = fft_size//2
@@ -330,19 +296,42 @@ def analyze(im, fft_size, step, n_jobs):
     Nh = int(np.ceil((im.shape[1] - fft_size) / step))
     Nv = int(np.ceil((im.shape[0] - fft_size) / step))
 
+    ###########################################################################
+    # prepare arrays that are needed many times to deal with the 2D fourier
+    # transforms
+    # x, y are indices of the frequency shifted transforms, i.e. the
+    # zero frequency (DC term) is now at [0,0]
+    x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
+                    -FFT_SIZE2 : FFT_SIZE2]
+    # r2: the geometrical distance (index) squared of a given intry in the FFT
+    r2 = x*x + y*y
+    # phi: the geometrical azimut of a given intry in the FFT with the range
+    #      -pi .. phi .. 0 mapped to 0 .. phi .. pi
+    phi = np.arctan2(x, y)
+    phi[phi < 0] += np.pi
+
+    # mask: discard very low frequencies (index 1,2) and high frequencies
+    # (indices above FFT_SIZE2)
+    mask = ~((r2 > 16) & (r2 < FFT_SIZE2**2))
+    # 2D hanning window
+    han = np.hanning(fft_size)
+    han2d = np.sqrt(np.outer(han, han))
+    ###########################################################################
+
     with Parallel(n_jobs=n_jobs) as parallel:
         res = parallel(delayed(inner_loop)(v,
                                            im,
-                                           FFT_SIZE2, step) \
+                                           FFT_SIZE2, step,
+                                           r2, phi, mask, han2d) \
                                            for rv, v, in enumerate(range(FFT_SIZE2,
                                                                          im.shape[0] - FFT_SIZE2,
                                                                          step)))
-        d, delta_d, phi, delta_phi = zip(*res)
+        d, delta_d, omega, delta_omega = zip(*res)
 
     return (np.array(d).reshape(Nv, Nh),
             np.array(delta_d).reshape(Nv, Nh),
-            np.array(phi).reshape(Nv, Nh),
-            np.array(delta_phi).reshape(Nv, Nh))
+            np.array(omega).reshape(Nv, Nh),
+            np.array(delta_omega).reshape(Nv, Nh))
 
 
 def sub_imageplot(data, ax, title, vmin, vmax):
