@@ -157,14 +157,22 @@ def analyze_direction(window, radius_squared, phi):
             FWHH of ``omega``
     """
     bins = 18 # 10 degrees per bin
-    dphi = np.pi / bins
 
-    d, _ = np.histogram(phi.flatten(), bins=bins,
-                        weights=window.flatten() / radius_squared.flatten())
+    d, edges = np.histogram(phi.flatten(), bins=bins,
+                            weights=window.flatten() / radius_squared.flatten())
 
     if np.nanmax(d) > 1.5 * np.nanmean(d):
         #   significant peak
-        omega, delta_omega = find_peak(np.linspace(dphi, np.pi - dphi, num=bins), d)
+        # peak could lie close to zero or pi, which makes fitting a gaussian
+        # impossible (or problematic at least). do wrap-around (to counter act
+        # the phi[phi <= 0] += np.pi)
+        edges = np.append(edges[:-1], edges[:-1])
+        d = np.append(d, d)
+        # replace 'nan' by linear interpolation between its neighbors
+        mask = np.isnan(d)
+        d[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), d[~mask])
+
+        omega, delta_omega = find_peak(edges, d)
     else:
         omega = float('nan')
         delta_omega = float('nan')
