@@ -162,6 +162,8 @@ def analyze_direction(window, radius_squared, phi):
 
     if np.nanmax(d) > 1.5 * np.nanmean(d):
         #   significant peak
+        # replace boundaries by center of bins
+        edges += 0.5 * (edges[1] - edges[0])
         # peak could lie close to zero or pi, which makes fitting a gaussian
         # impossible (or problematic at least). do wrap-around (to counter act
         # the phi[phi <= 0] += np.pi)
