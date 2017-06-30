@@ -151,10 +151,10 @@ def analyze_direction(window, radius_squared, phi):
     """
     bins = 36 # 10 degrees per bin
     warnings.simplefilter('ignore', RuntimeWarning)
-    d, edges = np.histogram(phi.flatten(), bins=bins,
-                            weights=window.flatten() / radius_squared.flatten())
+    angle, edges = np.histogram(phi.flatten(), bins=bins,
+                                weights=window.flatten() / radius_squared.flatten())
 
-    if np.nanmax(d) > 1.5 * np.nanmean(d):
+    if np.nanmax(angle) > 1.5 * np.nanmean(angle):
         #   significant peak
         # replace boundaries by center of bins
         edges += 0.5 * (edges[1] - edges[0])
@@ -162,12 +162,12 @@ def analyze_direction(window, radius_squared, phi):
         # impossible (or problematic at least). do wrap-around (to counter act
         # the phi[phi <= 0] += np.pi)
         edges = np.append(edges[:-1], edges[:-1])
-        d = np.append(d, d)
+        angle = np.append(angle, angle)
         # replace 'nan' by linear interpolation between its neighbors
-        mask = np.isnan(d)
-        d[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), d[~mask])
+        mask = np.isnan(angle)
+        angle[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), angle[~mask])
 
-        omega, delta_omega = find_peak(edges, d)
+        omega, delta_omega = find_peak(edges, angle)
     else:
         omega = float('nan')
         delta_omega = float('nan')
