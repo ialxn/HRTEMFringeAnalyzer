@@ -154,7 +154,7 @@ def analyze_direction(window, radius_squared, phi):
     angle, edges = np.histogram(phi.flatten(), bins=bins,
                                 weights=window.flatten() / radius_squared.flatten())
 
-    if np.nanmax(angle) > 1.5 * np.nanmean(angle):
+    if np.nanmax(angle) > 3.0 * np.nanmean(angle):
         #   significant peak
         # replace boundaries by center of bins
         edges += 0.5 * (edges[1] - edges[0])
@@ -202,7 +202,7 @@ def determine_lattice_const(window, radius_squared):
                                  bins=bins,
                                  weights=window.flatten() / radius_squared.flatten())
 
-    if np.nanmax(radius) > 2.0 * np.nanmean(radius):
+    if np.nanmax(radius) > 12.0 * np.nanmean(radius):
         # significant peak
         # replace boundaries by center of bins
         edges += 0.5 * (edges[1] - edges[0])
