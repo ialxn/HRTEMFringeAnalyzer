@@ -49,13 +49,22 @@ def main():
 
     for res in ('direction', 'coherence', 'periode', 'spread'):
         mat = np.loadtxt(args.file + '_' + res + '.dat.gz')
-        plt.figure()
+        fig = plt.figure()
         subplot1 = plt.subplot(111)
         subplot1.imshow(image, extent=None, aspect='equal', cmap='gray')
         x = np.arange(window // 2, image.shape[1] - window // 2, inc)
         y = np.arange(window // 2, image.shape[0] - window // 2, inc)
-        subplot1.contourf(x, y, mat, alpha=0.5, cmap='jet')
+        cax = subplot1.contourf(x, y, mat, alpha=0.5, cmap='jet')
+        if res == 'direction':
+            ticks = np.linspace(0, np.pi, num=9, endpoint=True)
+            labels = ['W', '', 'NW', '', 'N', '', 'NE', '', 'E']
+            cbar = fig.colorbar(cax, ticks=ticks, shrink=0.7)
+            cbar.ax.set_yticklabels(labels)
+        else:
+            fig.colorbar(cax, shrink=0.7)
+
         subplot1.set_title(res)
+
         plt.savefig(args.file + '_' + res + '.' + args.type)
 
 

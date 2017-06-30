@@ -352,7 +352,7 @@ def analyze(im, fft_size, step, n_jobs):
             np.array(delta_omega).reshape(Nv, Nh))
 
 
-def sub_imageplot(data, ax, title, vmin, vmax):
+def sub_imageplot(data, ax, title, vmin, vmax, ticks, labels):
     """Plot image ``data`` at axes instance ``ax``. Add title ``title`` and
     use scale ``vmin`` .. ``vmax``
     """
@@ -366,7 +366,11 @@ def sub_imageplot(data, ax, title, vmin, vmax):
     # Create colorbar in the appended axes
     # Tick locations can be set with the kwarg `ticks`
     # and the format of the ticklabels with kwarg `format`
-    plt.colorbar(im, cax=cax)
+    if labels:
+        cbar = plt.colorbar(im, cax=cax, ticks=ticks)
+        cbar.ax.set_yticklabels(labels)
+    else:
+        plt.colorbar(im, cax=cax)
     ax.set_title(title)
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
@@ -432,26 +436,27 @@ def main():
                    delimiter='\t', header=header, comments='')
 
     _, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-
     if ('A' in args.autoscale) or ('D' in args.autoscale):
-        sub_imageplot(d_value, ax1, 'd_values', None, None)
+        sub_imageplot(d_value, ax1, 'd_values', None, None, None, None)
     else:
-        sub_imageplot(d_value, ax1, 'd_values', 0.0, 20.0)
+        sub_imageplot(d_value, ax1, 'd_values', 0.0, 20.0, None, None)
 
     if ('A' in args.autoscale) or ('C' in args.autoscale):
-        sub_imageplot(coherence, ax2, 'coherence', None, None)
+        sub_imageplot(coherence, ax2, 'coherence', None, None, None, None)
     else:
-        sub_imageplot(coherence, ax2, 'coherence', 0.0, 1.0)
+        sub_imageplot(coherence, ax2, 'coherence', 0.0, 1.0, None, None)
 
     if ('A' in args.autoscale) or ('P' in args.autoscale):
-        sub_imageplot(direction, ax3, 'direction', None, None)
+        sub_imageplot(direction, ax3, 'direction', None, None, None, None)
     else:
-        sub_imageplot(direction, ax3, 'direction', 0.0, np.pi)
+        ticks = np.linspace(0, np.pi, num=9, endpoint=True)
+        labels = ['W', '', 'NW', '', 'N', '', 'NE', '', 'E']
+        sub_imageplot(direction, ax3, 'direction', 0.0, np.pi, ticks, labels)
 
     if ('A' in args.autoscale) or ('S' in args.autoscale):
-        sub_imageplot(spread, ax4, 'spread', None, None)
+        sub_imageplot(spread, ax4, 'spread', None, None, None, None)
     else:
-        sub_imageplot(spread, ax4, 'spread', 0.0, 1.0)
+        sub_imageplot(spread, ax4, 'spread', 0.0, 1.0, None, None)
 
     plt.tight_layout()
 
