@@ -65,46 +65,40 @@ def find_peak(x, y):
         delta_value : float
             FWHH
     """
-    idx_max = np.nanargmax(y)
-    m = np.isfinite(y)  # mask that contains only finite entries
-    if len(m) < 4:
-        # not enough data for fit, return x for which y is maximum
-        max_value = x[idx_max]
+    idx_max = np.argmax(y)
+    p0 = [y[idx_max],
+          x[idx_max],
+          x.ptp() / 4.0,
+          y.mean()]
+    try:
+        warnings.simplefilter('ignore', OptimizeWarning)
+        coeffs, cov = curve_fit(gaussian,
+                                x,
+                                y,
+                                p0=p0)
+    except (ValueError, RuntimeError):
+        max_value = float('nan')
         delta_value = float('nan')
     else:
-        p0 = [y[idx_max],
-              x[idx_max],
-              x[m].ptp() / 4.0,
-              y[m].mean()]
-        try:
-            warnings.simplefilter('ignore', OptimizeWarning)
-            coeffs, cov = curve_fit(gaussian,
-                                    x[m],
-                                    y[m],
-                                    p0=p0)
-        except (ValueError, RuntimeError):
-            max_value = float('nan')
-            delta_value = float('nan')
+        # successful fit:
+        #   maximum: in (validated) x-range and finite error
+        #   delta: positive and error smaller than (validated) x-range
+        if (coeffs[1] > x[0]) and (coeffs[1] < x[-1]) and np.isfinite(cov[1, 1]):
+            max_value = coeffs[1]
         else:
-            # successful fit:
-            #   maximum: in (validated) x-range and finite error
-            #   delta: positive and error smaller than (validated) x-range
-            if (coeffs[1] > x[m][0]) and (coeffs[1] < x[m][-1]) and np.isfinite(cov[1, 1]):
-                max_value = coeffs[1]
-            else:
-                max_value = float('nan')
-            if coeffs[2] > 0.0:
-                try:
-                    err = sqrt(cov[2, 2])
-                except ValueError:
-                    delta_value = float('nan')
-                else:
-                    if err < x[m].ptp():
-                        delta_value = coeffs[2]
-                    else:
-                        delta_value = float('nan')
-            else:
+            max_value = float('nan')
+        if coeffs[2] > 0.0:
+            try:
+                err = sqrt(cov[2, 2])
+            except ValueError:
                 delta_value = float('nan')
+            else:
+                if err < x.ptp():
+                    delta_value = coeffs[2]
+                else:
+                    delta_value = float('nan')
+        else:
+            delta_value = float('nan')
 
     return max_value, delta_value
 
@@ -212,7 +206,11 @@ def determine_lattice_const(window, radius_squared):
         # significant peak
         # replace boundaries by center of bins
         edges += 0.5 * (edges[1] - edges[0])
-        d, delta_d = find_peak(edges[:-1], np.nan_to_num(radius))
+        # replace 'nan' by linear interpolation between its neighbors
+        mask = np.isnan(radius)
+        radius[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), radius[~mask])
+
+        d, delta_d = find_peak(edges[:-1], radius)
         # convert to periode
         d = window.shape[0] / d
         delta_d = 1.0 / delta_d
