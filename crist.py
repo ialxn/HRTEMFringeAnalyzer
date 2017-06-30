@@ -192,7 +192,7 @@ def determine_lattice_const(window, radius_squared):
         delta_d : float
             Coherence length (length of periodic structure) as A.U.
     """
-    bins = 40  # ad hoc definition
+    bins = window.shape[0]//2  # ad hoc definition
     #
     # weights should  include 1/r^2
     # we integrate azimutally, thus noise at large ``r`` contributes more
