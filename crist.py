@@ -68,7 +68,7 @@ def find_peak(x, y):
     idx_max = np.argmax(y)
     p0 = [y[idx_max],
           x[idx_max],
-          x.ptp() / 4.0,
+          x.ptp() / 10.0,
           y.mean()]
     try:
         warnings.simplefilter('ignore', OptimizeWarning)
