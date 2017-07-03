@@ -353,13 +353,16 @@ def analyze(im, fft_size, step, n_jobs):
             np.array(delta_omega).reshape(Nv, Nh))
 
 
-def sub_imageplot(data, ax, title, vmin, vmax, ticks, labels):
+def sub_imageplot(data, ax, title):
     """Plot image ``data`` at axes instance ``ax``. Add title ``title`` and
     use scale ``vmin`` .. ``vmax``
     """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    im = ax.imshow(data, cmap='jet', vmin=vmin, vmax=vmax, origin='upper')
+    if title == 'direction':
+        im = ax.imshow(data, cmap='jet', vmin=0, vmax=np.pi, origin='upper')
+    else:
+        im = ax.imshow(data, cmap='jet', origin='upper')
     # Create divider for existing axes instance
     divider = make_axes_locatable(ax)
     # Append axes to the right of ax, with 20% width of ax
@@ -367,7 +370,9 @@ def sub_imageplot(data, ax, title, vmin, vmax, ticks, labels):
     # Create colorbar in the appended axes
     # Tick locations can be set with the kwarg `ticks`
     # and the format of the ticklabels with kwarg `format`
-    if labels:
+    if title == 'direction':
+        ticks = np.linspace(0, np.pi, num=9, endpoint=True)
+        labels = ['W', '', 'NW', '', 'N', '', 'NE', '', 'E']
         cbar = plt.colorbar(im, cax=cax, ticks=ticks)
         cbar.ax.set_yticklabels(labels)
     else:
@@ -384,9 +389,6 @@ def main():
     plt.close()
 
     parser = ArgumentParser(description='Analyze local cristallinity of data')
-    parser.add_argument('-a', '--autoscale', metavar='KEY',
-                        type=str, default='X',
-                        help='autoscale color bar [DCPSA]')
     parser.add_argument('-f', '--file', metavar='FILE',
                         type=str, required=True,
                         help='Name of data file. Remove outliers (bright and dark) before.')
@@ -437,27 +439,11 @@ def main():
                    delimiter='\t', header=header, comments='')
 
     _, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-    if ('A' in args.autoscale) or ('D' in args.autoscale):
-        sub_imageplot(d_value, ax1, 'd_values', None, None, None, None)
-    else:
-        sub_imageplot(d_value, ax1, 'd_values', 0.0, 20.0, None, None)
 
-    if ('A' in args.autoscale) or ('C' in args.autoscale):
-        sub_imageplot(coherence, ax2, 'coherence', None, None, None, None)
-    else:
-        sub_imageplot(coherence, ax2, 'coherence', 0.0, 1.0, None, None)
-
-    if ('A' in args.autoscale) or ('P' in args.autoscale):
-        sub_imageplot(direction, ax3, 'direction', None, None, None, None)
-    else:
-        ticks = np.linspace(0, np.pi, num=9, endpoint=True)
-        labels = ['W', '', 'NW', '', 'N', '', 'NE', '', 'E']
-        sub_imageplot(direction, ax3, 'direction', 0.0, np.pi, ticks, labels)
-
-    if ('A' in args.autoscale) or ('S' in args.autoscale):
-        sub_imageplot(spread, ax4, 'spread', None, None, None, None)
-    else:
-        sub_imageplot(spread, ax4, 'spread', 0.0, 1.0, None, None)
+    sub_imageplot(d_value, ax1, 'd_values')
+    sub_imageplot(coherence, ax2, 'coherence')
+    sub_imageplot(direction, ax3, 'direction')
+    sub_imageplot(spread, ax4, 'spread')
 
     plt.tight_layout()
 
@@ -473,4 +459,10 @@ def main():
 
 
 if __name__ == '__main__':
+    #
+    # tuning knob for finding direction of the periodic pattern
+    _tune_direction_treshhold = 3.0
+    # tuning knob for finding the d-value of the periodic pattern
+    _tune_period_treshhold = 12.0
+    #
     main()
