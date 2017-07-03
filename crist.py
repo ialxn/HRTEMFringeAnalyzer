@@ -212,8 +212,8 @@ def determine_lattice_const(window, radius_squared):
 
         d, delta_d = find_peak(edges[:-1], radius)
         d = 1.0 / np.interp(d,
-                  np.arange(window.shape[0]//2),
-                  fftfreq(window.shape[0])[0 : window.shape[0]//2])
+                            np.arange(window.shape[0]//2),
+                            fftfreq(window.shape[0])[0 : window.shape[0]//2])
         delta_d = 1.0 / delta_d
     else:
         d = float('nan')
