@@ -22,6 +22,17 @@ from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 
 __version__ = ''
+
+# tuning knobs
+# ``_tune_threshold_direction``: a valid peak along the azimut must be higher
+#                                than ``_tune_threshold_direction`` times the
+#                                mean intensity
+# ``_tune_threshold_period``: a valid peak along the radius must be higher
+#                             than ``_tune_threshold_period`` times the
+#                             mean intensity
+#
+_tune_threshold_direction = 3.0
+_tune_threshold_period = 12.0
 #
 # for jacoby
 # ddA = 1
@@ -154,7 +165,7 @@ def analyze_direction(window, radius_squared, phi):
     angle, edges = np.histogram(phi.flatten(), bins=bins,
                                 weights=window.flatten() / radius_squared.flatten())
 
-    if np.nanmax(angle) > 3.0 * np.nanmean(angle):
+    if np.nanmax(angle) > _tune_threshold_direction * np.nanmean(angle):
         #   significant peak
         # replace boundaries by center of bins
         edges += 0.5 * (edges[1] - edges[0])
@@ -202,7 +213,7 @@ def determine_lattice_const(window, radius_squared):
                                  bins=bins,
                                  weights=window.flatten() / radius_squared.flatten())
 
-    if np.nanmax(radius) > 12.0 * np.nanmean(radius):
+    if np.nanmax(radius) > _tune_threshold_period * np.nanmean(radius):
         # significant peak
         # replace boundaries by center of bins
         edges += 0.5 * (edges[1] - edges[0])
