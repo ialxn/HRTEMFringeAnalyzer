@@ -31,14 +31,8 @@ __version__ = ''
 #                             than ``_tune_threshold_period`` times the
 #                             mean intensity
 #
-_tune_threshold_direction = 3.0
-_tune_threshold_period = 12.0
-#
-# for jacoby
-# ddA = 1
-# ddoffset = 1
-# ddsigma = A*(mu - x)**2*exp(-0.5*(mu - x)**2/sigma**2)/sigma**3
-# ddmu = -A*(mu - x)*exp(-0.5*(mu - x)**2/sigma**2)/sigma**2
+_tune_threshold_direction = 2.5
+_tune_threshold_period = 10.0
 #
 @jit(nopython=True, nogil=True, cache=True)
 def gaussian(x, *p):
