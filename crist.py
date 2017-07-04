@@ -386,8 +386,15 @@ def sub_imageplot(data, ax, title):
         labels = ['W', '', 'NW', '', 'N', '', 'NE', '', 'E']
         cbar = plt.colorbar(im, cax=cax, ticks=ticks)
         cbar.ax.set_yticklabels(labels)
+        cbar.set_label('direction  [-]')
     else:
-        plt.colorbar(im, cax=cax)
+        cbar = plt.colorbar(im, cax=cax)
+        if title == 'd_values':
+            cbar.set_label('d value  [pixel]')
+        if title == 'coherence':
+            cbar.set_label('coherence  [A.U.]')
+        if title == 'spread':
+            cbar.set_label(r'$\sigma_\mathrm{dir}$  [$^\circ$]')
     ax.set_title(title)
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
