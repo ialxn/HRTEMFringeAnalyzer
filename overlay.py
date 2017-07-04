@@ -47,7 +47,7 @@ def main():
 
     window, inc = read_header(args.file + '_direction.dat.gz')
 
-    for res in ('direction', 'coherence', 'periode', 'spread'):
+    for res in ('direction', 'coherence', 'period', 'spread'):
         mat = np.loadtxt(args.file + '_' + res + '.dat.gz')
         fig = plt.figure()
         subplot1 = plt.subplot(111)
