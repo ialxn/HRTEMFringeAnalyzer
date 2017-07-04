@@ -3,7 +3,7 @@
 """
 Created on Fri Jun 23 10:44:23 2017
 
-@author: alxneit
+@author: Ivo Alxneit (ivo.alxneit@psi.ch)
 """
 from argparse import ArgumentParser
 import gzip

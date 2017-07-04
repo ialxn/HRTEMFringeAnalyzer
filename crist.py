@@ -3,7 +3,7 @@
 """
 Created on Fri Jun  2 08:32:42 2017
 
-@author: alxneit
+@author: Ivo Alxneit (ivo.alxneit@psi.ch)
 """
 import warnings
 
