@@ -455,7 +455,7 @@ def main():
     sub_imageplot(d_value, ax1, 'd_values')
     sub_imageplot(coherence, ax2, 'coherence')
     sub_imageplot(direction, ax3, 'direction')
-    sub_imageplot(spread, ax4, 'spread')
+    sub_imageplot(np.rad2deg(spread), ax4, 'spread')
 
     plt.tight_layout()
 
