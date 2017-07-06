@@ -73,8 +73,8 @@ def find_peak(x, y):
     idx_max = np.argmax(y)
     p0 = [y[idx_max],
           x[idx_max],
-          x.ptp() / 10.0,
-          y.mean()]
+          x.ptp() * 0.05,
+          y.mean() * 0.5]
     try:
         warnings.simplefilter('ignore', OptimizeWarning)
         coeffs, cov = curve_fit(gaussian,
