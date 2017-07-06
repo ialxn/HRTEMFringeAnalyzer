@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 __version__ = ''
 
 # tuning knobs
-# ``_tune_threshold_direction``: a valid peak along the azimut must be higher
+# ``_tune_threshold_direction``: a valid peak along the azimuth must be higher
 #                                than ``_tune_threshold_direction`` times the
 #                                mean intensity
 # ``_tune_threshold_period``: a valid peak along the radius must be higher
@@ -181,7 +181,7 @@ def analyze_direction(window, radius_squared, phi):
 
 
 def determine_lattice_const(window, radius_squared):
-    """Determine lattice constant and coherence lenght from FFT. All calculations
+    """Determine lattice constant and coherence length from FFT. All calculations
     in pixel numbers.
 
     Parameters:
@@ -193,14 +193,14 @@ def determine_lattice_const(window, radius_squared):
 
     Returns
         d : float
-            Periode found
+            Period found
         delta_d : float
             Coherence length (length of periodic structure) as A.U.
     """
     bins = window.shape[0]//2  # ad hoc definition
     #
     # weights should  include 1/r^2
-    # we integrate azimutally, thus noise at large ``r`` contributes more
+    # we integrate azimuthally, thus noise at large ``r`` contributes more
     # than noise (or signal) at small ``r``
     warnings.simplefilter('ignore', RuntimeWarning)
     radius, edges = np.histogram(np.sqrt(radius_squared).flatten(),
@@ -256,7 +256,7 @@ def inner_loop(v, im, fft_size, step, r2, phi, mask, han2d):
     Returns
         List of np arrays of length ``Nh``
         d : np array
-            Periode found
+            Period found
         delta_d : np array
             Coherence length (length of periodic structure) as A.U.
         omega : np array
@@ -304,7 +304,7 @@ def analyze(im, fft_size, step, n_jobs):
 
     Returns
         d : np array
-            Periode
+            Period
         delta_d : np array
             Coherence length (length of periodic structure) as A.U.
         omega : np array
@@ -321,15 +321,15 @@ def analyze(im, fft_size, step, n_jobs):
     Nv = int(np.ceil((im.shape[0] - fft_size) / step))
 
     ###########################################################################
-    # prepare arrays that are needed many times to deal with the 2D fourier
+    # prepare arrays that are needed many times to deal with the 2D Fourier
     # transforms
     # x, y are indices of the frequency shifted transforms, i.e. the
     # zero frequency (DC term) is now at [0,0]
     x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
                     -FFT_SIZE2 : FFT_SIZE2]
-    # r2: the geometrical distance (index) squared of a given intry in the FFT
+    # r2: the geometrical distance (index) squared of a given entry in the FFT
     r2 = x*x + y*y
-    # phi: the geometrical azimut of a given intry in the FFT with the range
+    # phi: the geometrical azimuth of a given entry in the FFT with the range
     #      -pi .. phi .. 0 mapped to 0 .. phi .. pi
     phi = np.arctan2(x, y)
     phi[phi < 0] += np.pi
