@@ -164,15 +164,31 @@ def analyze_direction(window, radius_squared, phi):
         # replace boundaries by center of bins
         edges += 0.5 * (edges[1] - edges[0])
         # peak could lie close to zero or pi, which makes fitting a gaussian
-        # impossible (or problematic at least). do wrap-around (to counter act
-        # the phi[phi <= 0] += np.pi)
-        edges = np.append(edges[:-1], edges[:-1])
-        angle = np.append(angle, angle)
+        # impossible (or problematic at least).
+        # if peak is in a unproblematic position (central two quarters, bins 9-26)
+        # pi/4 < peak_position < 3pi/4 then do nothing
+        # if peak lies in first or last quarter (bins 0-8 or 27-35)
+        # do wrap around, i.e. use quarters 2,3,0,1 (in this order) and analyze
+        # pi/2 < peak_position < 3pi/2
+        idx = np.nanargmax(angle)
+        if (idx < 9) or (idx >= 27):
+            # note: len(edges) == bins+1! after the shift by half a bin width
+            #       edges[-1] is the offset to be added for the wrap-around
+            edges = np.append(edges[18:-1], edges[0:18] + edges[-1])
+            angle = np.append(angle[18:], angle[0:18])
+        else:
+            # remove last element of edges to have len(edges) == bins
+            edges = np.append(edges[:-1],[])
+
         # replace 'nan' by linear interpolation between its neighbors
         mask = np.isnan(angle)
         angle[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), angle[~mask])
 
         omega, delta_omega = find_peak(edges, angle)
+
+        # because of the wrap-around omega could be larger than pi
+        if omega > np.pi:
+            omega -= np.pi
     else:
         omega = float('nan')
         delta_omega = float('nan')
