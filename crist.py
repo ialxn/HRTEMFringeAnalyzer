@@ -92,6 +92,7 @@ def find_peak(x, y):
             max_value = coeffs[1]
         else:
             max_value = float('nan')
+
         if coeffs[2] > 0.0:
             try:
                 err = sqrt(cov[2, 2])
