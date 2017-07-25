@@ -128,7 +128,7 @@ def noise_floor(window, radius_squared):
         noise_floor : float
             mean + 3*sigma
     """
-    mask = (radius_squared >= (window.shape[0]//2)**2)
+    mask = (radius_squared >= (window.shape[0] // 2)**2)
     mean = window[mask].mean()
     error = window[mask].std()
 
@@ -157,7 +157,8 @@ def analyze_direction(window, radius_squared, phi):
     """
     bins = 36 # 10 degrees per bin
     warnings.simplefilter('ignore', RuntimeWarning)
-    angle, edges = np.histogram(phi.flatten(), bins=bins,
+    angle, edges = np.histogram(phi.flatten(),
+                                bins=bins,
                                 weights=window.flatten() / radius_squared.flatten())
 
     if np.nanmax(angle) > _tune_threshold_direction * np.nanmean(angle):
@@ -175,11 +176,11 @@ def analyze_direction(window, radius_squared, phi):
         if (idx < 9) or (idx >= 27):
             # note: len(edges) == bins+1! after the shift by half a bin width
             #       edges[-1] is the offset to be added for the wrap-around
-            edges = np.append(edges[18:-1], edges[0:18] + edges[-1])
-            angle = np.append(angle[18:], angle[0:18])
+            edges = np.append(edges[18 : -1], edges[0 : 18] + edges[-1])
+            angle = np.append(angle[18 : ], angle[0 : 18])
         else:
             # remove last element of edges to have len(edges) == bins
-            edges = np.append(edges[:-1],[])
+            edges = np.append(edges[ : -1], [])
 
         # replace 'nan' by linear interpolation between its neighbors
         mask = np.isnan(angle)
@@ -214,7 +215,7 @@ def determine_lattice_const(window, radius_squared):
         delta_d : float
             Coherence length (length of periodic structure) as A.U.
     """
-    bins = window.shape[0]//2  # ad hoc definition
+    bins = window.shape[0] // 2  # ad hoc definition
     #
     # weights should  include 1/r^2
     # we integrate azimuthally, thus noise at large ``r`` contributes more
@@ -232,10 +233,10 @@ def determine_lattice_const(window, radius_squared):
         mask = np.isnan(radius)
         radius[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), radius[~mask])
 
-        d, delta_d = find_peak(edges[:-1], radius)
+        d, delta_d = find_peak(edges[ : -1], radius)
         d = 1.0 / np.interp(d,
-                            np.arange(window.shape[0]//2),
-                            fftfreq(window.shape[0])[0 : window.shape[0]//2])
+                            np.arange(window.shape[0] // 2),
+                            fftfreq(window.shape[0])[0 : window.shape[0] // 2])
         delta_d = 1.0 / delta_d
     else:
         d = float('nan')
@@ -281,7 +282,7 @@ def inner_loop(v, im, fft_size, step, r2, phi, mask, han2d):
         delta_omega : np array
             Spread of direction vector
     """
-    FFT_SIZE2 = fft_size//2
+    FFT_SIZE2 = fft_size // 2
     Nh = int(np.ceil((im.shape[1] - fft_size) / step))
     d = np.zeros([Nh])
     delta_d = np.zeros([Nh])
@@ -329,7 +330,7 @@ def analyze(im, fft_size, step, n_jobs):
         delta_omega : np array
             Spread of direction vector
     """
-    FFT_SIZE2 = fft_size//2
+    FFT_SIZE2 = fft_size // 2
     # x-axis is im.shape[1] -> horizontal (left->right)
     # y-axis is im.shape[0] -> vertical (top->down)
     # indices v,h for center of roi in image
