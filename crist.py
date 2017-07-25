@@ -11,7 +11,7 @@ from argparse import ArgumentParser
 
 from math import sqrt
 import numpy as np
-from numpy.fft import fft2, fftshift, fftfreq
+from numpy.fft import fft2, fftshift
 
 from scipy.misc import imread
 from scipy.optimize import curve_fit, OptimizeWarning
@@ -234,9 +234,8 @@ def determine_lattice_const(window, radius_squared):
         radius[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), radius[~mask])
 
         d, delta_d = find_peak(edges[ : -1], radius)
-        d = 1.0 / np.interp(d,
-                            np.arange(window.shape[0] // 2),
-                            fftfreq(window.shape[0])[0 : window.shape[0] // 2])
+        # convert to periode
+        d = window.shape[0] / d
         delta_d = 1.0 / delta_d
     else:
         d = float('nan')
