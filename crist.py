@@ -364,9 +364,9 @@ def analyze(im, fft_size, step, n_jobs):
                                            im,
                                            fft_size, step,
                                            r2, phi, mask, han2d) \
-                                           for rv, v, in enumerate(range(FFT_SIZE2,
-                                                                         im.shape[0] - FFT_SIZE2,
-                                                                         step)))
+                                           for v in range(FFT_SIZE2,
+                                                          im.shape[0] - FFT_SIZE2,
+                                                          step))
         d, delta_d, omega, delta_omega = zip(*res)
 
     return (np.array(d).reshape(Nv, Nh),
