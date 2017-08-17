@@ -299,7 +299,7 @@ def inner_loop(v, im, fft_size, step, r2, phi, mask, han2d):
         # equalize contrast in each roi: -0.5 .. 0.5
         roi = (roi + roi.min()) / roi.max()
         roi -= roi.mean()
-        spec = fftshift(np.abs(fft2(han2d * roi)))
+        spec = fftshift(np.abs(fft2(han2d * roi)**2))
         level = noise_floor(spec, r2)
 
         spec[mask] = 0
