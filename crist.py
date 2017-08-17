@@ -200,16 +200,16 @@ def analyze_direction(window, radius_squared, phi):
     return omega, delta_omega
 
 
-def determine_lattice_const(window, radius_squared):
+def determine_lattice_const(power_spectrum, radius2):
     """Determine lattice constant and coherence length from FFT. All calculations
     in pixel numbers.
 
     Parameters:
-        window : np.array
-            2D Fourier transform.
-        radius_squared : np.array
+        power_spectrum : np.array
+            abs(2D Fourier transform)
+        radius2 : np.array
             squared distances of each pixel in the 2D FFT relative to the one
-            that represents the zero frequency
+            that represents the zero frequency i.e. frequency^2
 
     Returns
         d : float
@@ -217,27 +217,27 @@ def determine_lattice_const(window, radius_squared):
         delta_d : float
             Coherence length (length of periodic structure) as A.U.
     """
-    bins = window.shape[0] // 2  # ad hoc definition
-    #
-    # weights should  include 1/r^2
+    bins = power_spectrum.shape[0] // 2  # ad hoc definition
+    # build histogram (power as function of radius, bin edges are radius in pixels)
+    # weights should  include 1/r^2 i.e. power_spectrum/r^2
     # we integrate azimuthally, thus noise at large ``r`` contributes more
     # than noise (or signal) at small ``r``
     warnings.simplefilter('ignore', RuntimeWarning)
-    radius, edges = np.histogram(np.sqrt(radius_squared).flatten(),
-                                 bins=bins,
-                                 weights=window.flatten() / radius_squared.flatten())
+    power, edges = np.histogram(np.sqrt(radius2).flatten(),
+                                bins=bins,
+                                weights=power_spectrum.flatten() / radius2.flatten())
 
-    if np.nanmax(radius) > _tune_threshold_period * np.nanmean(radius):
+    if np.nanmax(power) > _tune_threshold_period * np.nanmean(power):
         # significant peak
-        # replace boundaries by center of bins
+        # replace boundaries by centers of bins
         edges += 0.5 * (edges[1] - edges[0])
         # replace 'nan' by linear interpolation between its neighbors
-        mask = np.isnan(radius)
-        radius[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), radius[~mask])
+        mask = np.isnan(power)
+        power[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), power[~mask])
 
-        d, delta_d = find_peak(edges[ : -1], radius)
+        d, delta_d = find_peak(edges[ : -1], power)
         # convert to periode
-        d = window.shape[0] / d
+        d = power_spectrum.shape[0] / d
         delta_d = 1.0 / delta_d
     else:
         d = float('nan')
@@ -299,14 +299,16 @@ def inner_loop(v, im, fft_size, step, r2, phi, mask, han2d):
         # equalize contrast in each roi: -0.5 .. 0.5
         roi = (roi + roi.min()) / roi.max()
         roi -= roi.mean()
-        spec = fftshift(np.abs(fft2(han2d * roi)**2))
-        level = noise_floor(spec, r2)
+        power_spectrum = fftshift(np.abs(fft2(han2d * roi)**2))
+        level = noise_floor(power_spectrum, r2)
 
-        spec[mask] = 0
-        spec[spec <= level] = 0
+        # set very low and very high frequencies to zero (mask)
+        # set to zero all frequencies with power smaller than noise floor (level)
+        power_spectrum[mask] = 0
+        power_spectrum[power_spectrum <= level] = 0
 
-        d[rh], delta_d[rh] = determine_lattice_const(spec, r2)
-        omega[rh], delta_omega[rh] = analyze_direction(spec, r2, phi)
+        d[rh], delta_d[rh] = determine_lattice_const(power_spectrum, r2)
+        omega[rh], delta_omega[rh] = analyze_direction(power_spectrum, r2, phi)
 
     return (d, delta_d, omega, delta_omega)
 
