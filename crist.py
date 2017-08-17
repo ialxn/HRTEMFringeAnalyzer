@@ -51,7 +51,9 @@ def gaussian(x, *p):
         y = f(x, p)
     """
     A, mu, sigma, offset = p
-    return A * np.exp(-(x - mu)**2 / (2.0 * sigma**2)) + offset
+    # 4*ln2 = 2.7725887 ensures that sigma = FWHH
+    factor = 2.7725887
+    return A * np.exp(-factor*((x - mu) / sigma)**2) + offset
 
 
 def find_peak(x, y):
