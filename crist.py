@@ -32,7 +32,7 @@ __version__ = ''
 #                             mean intensity
 #
 _tune_threshold_direction = 2.5
-_tune_threshold_period = 10.0
+_tune_threshold_period = 25.0
 #
 @jit(nopython=True, nogil=True, cache=True)
 def gaussian(x, *p):
@@ -134,7 +134,7 @@ def noise_floor(window, radius_squared):
     mean = window[mask].mean()
     error = window[mask].std()
 
-    return mean + 3.0 * error
+    return mean + 4.0 * error
 
 
 def analyze_direction(window, radius_squared, phi):
@@ -358,7 +358,7 @@ def analyze(im, fft_size, step, n_jobs):
     phi = np.arctan2(x, y)
     phi[phi < 0] += np.pi
 
-    # mask: discard very low frequencies (index 1,2) and high frequencies
+    # mask: discard very low frequencies (index 1,2,3,4) and high frequencies
     # (indices above FFT_SIZE2)
     mask = ~((r2 > 16) & (r2 < FFT_SIZE2**2))
     # 2D hanning window
