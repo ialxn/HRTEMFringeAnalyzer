@@ -30,7 +30,7 @@ __version__ = ''
 #                             than ``_tune_threshold_period`` times the
 #                             mean intensity
 #
-_tune_threshold_direction = 2.5
+_tune_threshold_direction = 5.0
 _tune_threshold_period = 25.0
 #
 @jit(nopython=True, nogil=True, cache=True)
