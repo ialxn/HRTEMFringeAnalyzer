@@ -239,6 +239,8 @@ def determine_lattice_const(power_spectrum, radius2):
         # convert to periode
         d = power_spectrum.shape[0] / d
         delta_d = 1.0 / delta_d
+        if np.isnan(delta_d):
+            d = float('nan')
     else:
         d = float('nan')
         delta_d = float('nan')
