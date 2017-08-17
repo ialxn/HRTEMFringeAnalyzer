@@ -9,7 +9,6 @@ import warnings
 
 from argparse import ArgumentParser
 
-from math import sqrt
 import numpy as np
 from numpy.fft import fft2, fftshift
 
@@ -88,23 +87,15 @@ def find_peak(x, y):
         delta_value = float('nan')
     else:
         # successful fit:
-        #   maximum: in (validated) x-range and finite error
-        #   delta: positive and error smaller than (validated) x-range
+        #   max_value: in (validated) x-range and finite error
+        #   delta_value: positive and covariance is positive
         if (coeffs[1] > x[0]) and (coeffs[1] < x[-1]) and np.isfinite(cov[1, 1]):
             max_value = coeffs[1]
         else:
             max_value = float('nan')
 
-        if coeffs[2] > 0.0:
-            try:
-                err = sqrt(cov[2, 2])
-            except ValueError:
-                delta_value = float('nan')
-            else:
-                if err < x.ptp():
-                    delta_value = coeffs[2]
-                else:
-                    delta_value = float('nan')
+        if (coeffs[2] > 0.0) and (cov[2, 2] > 0.0):
+            delta_value = coeffs[2]
         else:
             delta_value = float('nan')
 
