@@ -181,9 +181,12 @@ def analyze_direction(window, radius_squared, phi):
 
         omega, delta_omega = find_peak(edges, angle)
 
-        # because of the wrap-around omega could be larger than pi
-        if omega > np.pi:
-            omega -= np.pi
+        if np.isnan(delta_omega):
+            omega = float('nan')
+        else:
+            # because of the wrap-around omega could be larger than pi
+            if omega > np.pi:
+                omega -= np.pi
     else:
         omega = float('nan')
         delta_omega = float('nan')
