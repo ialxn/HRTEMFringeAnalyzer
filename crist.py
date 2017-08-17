@@ -26,12 +26,15 @@ __version__ = ''
 # ``_tune_threshold_direction``: a valid peak along the azimuth must be higher
 #                                than ``_tune_threshold_direction`` times the
 #                                mean intensity
-# ``_tune_threshold_period``: a valid peak along the radius must be higher
+# ``_tune_threshold_period``: a valid peak along the frequency (radius) must be higher
 #                             than ``_tune_threshold_period`` times the
 #                             mean intensity
+# ``_tune_noise``: everything below mean() + ``_tune_noise``*std is considered
+#                  noise
 #
 _tune_threshold_direction = 5.0
 _tune_threshold_period = 25.0
+_tune_noise = 4.0
 #
 @jit(nopython=True, nogil=True, cache=True)
 def gaussian(x, *p):
@@ -115,17 +118,17 @@ def noise_floor(window, radius_squared):
         + use all data in cornes of 2D FFT (i.e. outside of circle
           with radius ``R`` = ``FFT_SIZE//2``)
         + calculate mean and standard deviation
-        + define noise floor as mean-value + 3*standard deviations
+        + define noise floor as mean-value + ``_tune_noise``*standard deviations
 
     Returns
         noise_floor : float
-            mean + 3*sigma
+            mean + ``_tune_noise``*sigma
     """
     mask = (radius_squared >= (window.shape[0] // 2)**2)
     mean = window[mask].mean()
     error = window[mask].std()
 
-    return mean + 4.0 * error
+    return mean + _tune_noise * error
 
 
 def analyze_direction(window, radius_squared, phi):
