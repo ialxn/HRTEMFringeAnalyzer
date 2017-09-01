@@ -95,8 +95,8 @@ def find_peak(x, y):
                                 y,
                                 p0=p0)
     except (ValueError, RuntimeError):
-        max_value = float('nan')
-        delta_value = float('nan')
+        max_value = np.nan
+        delta_value = np.nan
     else:
         # successful fit:
         #   max_value: in (validated) x-range and finite error
@@ -104,12 +104,12 @@ def find_peak(x, y):
         if (coeffs[1] > x[0]) and (coeffs[1] < x[-1]) and np.isfinite(cov[1, 1]):
             max_value = coeffs[1]
         else:
-            max_value = float('nan')
+            max_value = np.nan
 
         if (coeffs[2] > 0.0) and (cov[2, 2] > 0.0):
             delta_value = coeffs[2]
         else:
-            delta_value = float('nan')
+            delta_value = np.nan
 
     return max_value, delta_value
 
@@ -194,14 +194,14 @@ def analyze_direction(window, radius_squared, phi):
         omega, delta_omega = find_peak(edges, angle)
 
         if np.isnan(delta_omega):
-            omega = float('nan')
+            omega = np.nan
         else:
             # because of the wrap-around omega could be larger than pi
             if omega > np.pi:
                 omega -= np.pi
     else:
-        omega = float('nan')
-        delta_omega = float('nan')
+        omega = np.nan
+        delta_omega = np.nan
 
     return omega, delta_omega
 
@@ -246,10 +246,10 @@ def determine_lattice_const(power_spectrum, radius2):
         d = power_spectrum.shape[0] / d
         delta_d = 1.0 / delta_d
         if np.isnan(delta_d):
-            d = float('nan')
+            d = np.nan
     else:
-        d = float('nan')
-        delta_d = float('nan')
+        d = np.nan
+        delta_d = np.nan
 
     return d, delta_d
 
