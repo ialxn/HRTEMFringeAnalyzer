@@ -31,14 +31,14 @@ __version__ = ''
 #                             mean intensity
 # ``_tune_noise``: everything below mean() + ``_tune_noise``*std is considered
 #                  noise
-# ``_tune_max_frequency2``: filter out low frequencies and DC term of FFT.
-#                           ``_tune_max_frequency2`` corresponds to the index
+# ``_tune_min_frequency2``: filter out low frequencies and DC term of FFT.
+#                           ``_tune_min_frequency2`` corresponds to the index
 #                           (after flipping quadrants) squared.
 #
 _tune_threshold_direction = 5.0
 _tune_threshold_period = 25.0
 _tune_noise = 4.0
-_tune_max_frequency2 = 4 * 4
+_tune_min_frequency2 = 4 * 4
 #
 @jit(nopython=True, nogil=True, cache=True)
 def gaussian(x, *p):
@@ -363,7 +363,7 @@ def analyze(im, fft_size, step, n_jobs):
 
     # mask: discard very low frequencies (index 1,2,3,4) and high frequencies
     # (indices above FFT_SIZE2)
-    mask = ~((r2 > _tune_max_frequency2) & (r2 < FFT_SIZE2**2))
+    mask = ~((r2 > _tune_min_frequency2) & (r2 < FFT_SIZE2**2))
     # 2D hanning window
     han = np.hanning(fft_size)
     han2d = np.sqrt(np.outer(han, han))
