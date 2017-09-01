@@ -412,6 +412,7 @@ def sub_imageplot(data, ax, title):
         labels = ['W', '', 'NW', '', 'N', '', 'NE', '', 'E']
         cbar = plt.colorbar(im, cax=cax, ticks=ticks)
         cbar.ax.set_yticklabels(labels)
+        cbar.ax.invert_yaxis()  # W at top, E at bottom
         cbar.set_label('direction  [-]')
     else:
         cbar = plt.colorbar(im, cax=cax)
