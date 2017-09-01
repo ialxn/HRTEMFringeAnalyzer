@@ -498,10 +498,4 @@ def main():
 
 
 if __name__ == '__main__':
-    #
-    # tuning knob for finding direction of the periodic pattern
-    _tune_direction_treshhold = 3.0
-    # tuning knob for finding the d-value of the periodic pattern
-    _tune_period_treshhold = 12.0
-    #
     main()
