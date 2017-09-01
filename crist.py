@@ -35,10 +35,15 @@ __version__ = ''
 #                           ``_tune_min_frequency2`` corresponds to the index
 #                           (after flipping quadrants) squared.
 #
+# ``_tune_max_frequency2``: filter out high frequencies of FFT.
+#                           ``_tune_max_frequency2`` corresponds to the index
+#                           (after flipping quadrants) squared.
+#
 _tune_threshold_direction = 5.0
 _tune_threshold_period = 25.0
 _tune_noise = 4.0
 _tune_min_frequency2 = 4 * 4
+_tune_max_frequency2 = 0
 #
 @jit(nopython=True, nogil=True, cache=True)
 def gaussian(x, *p):
@@ -362,8 +367,8 @@ def analyze(im, fft_size, step, n_jobs):
     phi[phi < 0] += np.pi
 
     # mask: discard very low frequencies (index 1,2,3,4) and high frequencies
-    # (indices above FFT_SIZE2)
-    mask = ~((r2 > _tune_min_frequency2) & (r2 < FFT_SIZE2**2))
+    # (indices above _tune_max_frequency)
+    mask = ~((r2 > _tune_min_frequency2) & (r2 < _tune_max_frequency2))
     # 2D hanning window
     han = np.hanning(fft_size)
     han2d = np.sqrt(np.outer(han, han))
@@ -424,6 +429,7 @@ def sub_imageplot(data, ax, title):
 def main():
     """main function
     """
+    global _tune_max_frequency2
     supported = ','.join(plt.figure().canvas.get_supported_filetypes())
     plt.close()
 
@@ -448,6 +454,8 @@ def main():
     parser.add_argument('-v', '--version', action='version',
                         version='%(prog)s {version}'.format(version=__version__))
     args = parser.parse_args()
+
+    _tune_max_frequency2 = (args.FFT_size // 2)**2
 
     data = imread(args.file, mode='I')
     d_value, coherence, direction, spread = analyze(data,
