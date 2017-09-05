@@ -187,8 +187,8 @@ def analyze_direction(window, radius_squared, phi):
             # remove last element of edges to have len(edges) == bins
             edges = np.append(edges[ : -1], [])
 
-        # replace 'nan' by linear interpolation between its neighbors
-        mask = np.isnan(angle)
+        # replace non-finite entries by linear interpolation between its neighbors
+        mask = ~np.isfinite(angle)
         angle[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), angle[~mask])
 
         omega, delta_omega = find_peak(edges, angle)
@@ -237,8 +237,8 @@ def determine_lattice_const(power_spectrum, radius2):
         # significant peak
         # replace boundaries by centers of bins
         edges += 0.5 * (edges[1] - edges[0])
-        # replace 'nan' by linear interpolation between its neighbors
-        mask = np.isnan(power)
+        # replace non-finite entries by linear interpolation between its neighbors
+        mask = ~np.isfinite(power)
         power[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), power[~mask])
 
         d, delta_d = find_peak(edges[ : -1], power)
