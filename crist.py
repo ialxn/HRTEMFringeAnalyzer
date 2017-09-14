@@ -23,27 +23,27 @@ import matplotlib.pyplot as plt
 __version__ = ''
 
 # tuning knobs
-# ``_tune_threshold_direction``: a valid peak along the azimuth must be higher
-#                                than ``_tune_threshold_direction`` times the
+# ``TUNE_THRESHOLD_DIRECTION``: a valid peak along the azimuth must be higher
+#                                than ``TUNE_THRESHOLD_DIRECTION`` times the
 #                                mean intensity
-# ``_tune_threshold_period``: a valid peak along the frequency (radius) must be higher
-#                             than ``_tune_threshold_period`` times the
+# ``TUNE_THRESHOLD_PERIOD``: a valid peak along the frequency (radius) must be higher
+#                             than ``TUNE_THRESHOLD_PERIOD`` times the
 #                             mean intensity
-# ``_tune_noise``: everything below mean() + ``_tune_noise``*std is considered
+# ``TUNE_NOISE``: everything below mean() + ``TUNE_NOISE``*std is considered
 #                  noise
-# ``_tune_min_frequency2``: filter out low frequencies and DC term of FFT.
-#                           ``_tune_min_frequency2`` corresponds to the index
+# ``TUNE_MIN_FREQUENCY2``: filter out low frequencies and DC term of FFT.
+#                           ``TUNE_MIN_FREQUENCY2`` corresponds to the index
 #                           (after flipping quadrants) squared.
 #
-# ``_tune_max_frequency2``: filter out high frequencies of FFT.
-#                           ``_tune_max_frequency2`` corresponds to the index
+# ``TUNE_MAX_FREQUENCY2``: filter out high frequencies of FFT.
+#                           ``TUNE_MAX_FREQUENCY2`` corresponds to the index
 #                           (after flipping quadrants) squared.
 #
-_tune_threshold_direction = 5.0
-_tune_threshold_period = 25.0
-_tune_noise = 4.0
-_tune_min_frequency2 = 4 * 4
-_tune_max_frequency2 = 0
+TUNE_THRESHOLD_DIRECTION = 5.0
+TUNE_THRESHOLD_PERIOD = 25.0
+TUNE_NOISE = 4.0
+TUNE_MIN_FREQUENCY2 = 4 * 4
+TUNE_MAX_FREQUENCY2 = 0
 #
 @jit(nopython=True, nogil=True, cache=True)
 def gaussian(x, *p):
@@ -61,10 +61,10 @@ def gaussian(x, *p):
     Returns
         y = f(x, p)
     """
-    A, mu, sigma, offset = p
+    A, x_0, sigma, offset = p
     # 4*ln2 = 2.7725887 ensures that sigma = FWHH
     factor = 2.7725887
-    return A * np.exp(-factor*((x - mu) / sigma)**2) + offset
+    return A * np.exp(-factor*((x - x_0) / sigma)**2) + offset
 
 
 def find_peak(x, y):
@@ -84,16 +84,16 @@ def find_peak(x, y):
             FWHH
     """
     idx_max = np.argmax(y)
-    p0 = [y[idx_max],
-          x[idx_max],
-          x.ptp() * 0.05,
-          y.mean() * 0.5]
+    p_0 = [y[idx_max],
+           x[idx_max],
+           x.ptp() * 0.05,
+           y.mean() * 0.5]
     try:
         warnings.simplefilter('ignore', OptimizeWarning)
         coeffs, cov = curve_fit(gaussian,
                                 x,
                                 y,
-                                p0=p0)
+                                p0=p_0)
     except (ValueError, RuntimeError):
         max_value = np.nan
         delta_value = np.nan
@@ -127,17 +127,17 @@ def noise_floor(window, radius_squared):
         + use all data in cornes of 2D FFT (i.e. outside of circle
           with radius ``R`` = ``FFT_SIZE//2``)
         + calculate mean and standard deviation
-        + define noise floor as mean-value + ``_tune_noise``*standard deviations
+        + define noise floor as mean-value + ``TUNE_NOISE``*standard deviations
 
     Returns
         noise_floor : float
-            mean + ``_tune_noise``*sigma
+            mean + ``TUNE_NOISE``*sigma
     """
     mask = (radius_squared >= (window.shape[0] // 2)**2)
     mean = window[mask].mean()
     error = window[mask].std()
 
-    return mean + _tune_noise * error
+    return mean + TUNE_NOISE * error
 
 
 def analyze_direction(window, radius_squared, phi):
@@ -166,7 +166,7 @@ def analyze_direction(window, radius_squared, phi):
                                 bins=bins,
                                 weights=window.flatten() / radius_squared.flatten())
 
-    if np.nanmax(angle) > _tune_threshold_direction * np.nanmean(angle):
+    if np.nanmax(angle) > TUNE_THRESHOLD_DIRECTION * np.nanmean(angle):
         #   significant peak
         # replace boundaries by center of bins
         edges += 0.5 * (edges[1] - edges[0])
@@ -233,7 +233,7 @@ def determine_lattice_const(power_spectrum, radius2):
                                 bins=bins,
                                 weights=power_spectrum.flatten() / radius2.flatten())
 
-    if np.nanmax(power) > _tune_threshold_period * np.nanmean(power):
+    if np.nanmax(power) > TUNE_THRESHOLD_PERIOD * np.nanmean(power):
         # significant peak
         # replace boundaries by centers of bins
         edges += 0.5 * (edges[1] - edges[0])
@@ -254,14 +254,14 @@ def determine_lattice_const(power_spectrum, radius2):
     return d, delta_d
 
 
-def inner_loop(v, im, fft_size, step, const):
+def inner_loop(v, img, fft_size, step, const):
     """
     Analyzes horizontal line ``v`` in image ``im``
 
     Parameters:
         v : int
             Line number (horizontal index) to be analyzed
-        im : np array
+        img : np array
             Image to be analyzed
         fft_size : int
             width of window to be analyzed (2^N x 2^N)
@@ -293,19 +293,19 @@ def inner_loop(v, im, fft_size, step, const):
             Spread of direction vector
     """
     r2, phi, mask, han2d = const
-    FFT_SIZE2 = fft_size // 2
-    Nh = int(np.ceil((im.shape[1] - fft_size) / step))
+    fft_size2 = fft_size // 2
+    Nh = int(np.ceil((img.shape[1] - fft_size) / step))
     d = np.zeros([Nh])
     delta_d = np.zeros([Nh])
     omega = np.zeros([Nh])
     delta_omega = np.zeros([Nh])
 
-    for rh, h in enumerate(range(FFT_SIZE2,
-                                 im.shape[1] - FFT_SIZE2,
+    for rh, h in enumerate(range(fft_size2,
+                                 img.shape[1] - fft_size2,
                                  step)):
 
-        roi = im[v-FFT_SIZE2 : v+FFT_SIZE2,
-                 h-FFT_SIZE2 : h+FFT_SIZE2]
+        roi = img[v-fft_size2 : v+fft_size2,
+                  h-fft_size2 : h+fft_size2]
         # equalize contrast in each roi: -0.5 .. 0.5
         roi = (roi + roi.min()) / roi.max()
         roi -= roi.mean()
@@ -323,11 +323,11 @@ def inner_loop(v, im, fft_size, step, const):
     return (d, delta_d, omega, delta_omega)
 
 
-def analyze(im, fft_size, step, n_jobs):
+def analyze(img, fft_size, step, n_jobs):
     """Analyze local crystallinity of image ``im``
 
     Parameters:
-        im : np array
+        img : np array
             Image to be analyzed.
         fft_size : int
             Size of window to be analyzed (must be 2^N)
@@ -346,14 +346,14 @@ def analyze(im, fft_size, step, n_jobs):
         delta_omega : np array
             Spread of direction vector
     """
-    def pre_calc(FFT_SIZE2):
+    def pre_calc(fft_size2):
         """Prepare arrays that are needed many times to deal with the 2D Fourier
         transforms
         x, y are indices of the frequency shifted transforms, i.e. the
         zero frequency (DC term) is now at [0,0]
         """
-        x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
-                        -FFT_SIZE2 : FFT_SIZE2]
+        x, y = np.ogrid[-fft_size2 : fft_size2,
+                        -fft_size2 : fft_size2]
         # r2: the geometrical distance (index) squared of a given entry in the FFT
         r2 = x*x + y*y
         # phi: the geometrical azimuth of a given entry in the FFT with the range
@@ -363,7 +363,7 @@ def analyze(im, fft_size, step, n_jobs):
 
         # mask: discard very low frequencies (index 1,2,3,4) and high frequencies
         # (indices above _tune_max_frequency)
-        mask = ~((r2 > _tune_min_frequency2) & (r2 < _tune_max_frequency2))
+        mask = ~((r2 > TUNE_MIN_FREQUENCY2) & (r2 < TUNE_MAX_FREQUENCY2))
         # 2D hanning window
         han = np.hanning(fft_size)
         han2d = np.sqrt(np.outer(han, han))
@@ -371,22 +371,22 @@ def analyze(im, fft_size, step, n_jobs):
         return (r2, phi, mask, han2d)
 
 
-    FFT_SIZE2 = fft_size // 2
+    fft_size2 = fft_size // 2
     # x-axis is im.shape[1] -> horizontal (left->right)
     # y-axis is im.shape[0] -> vertical (top->down)
     # indices v,h for center of roi in image
     # indices rv, rh for result arrays
-    Nh = int(np.ceil((im.shape[1] - fft_size) / step))
-    Nv = int(np.ceil((im.shape[0] - fft_size) / step))
-    const = pre_calc(FFT_SIZE2)
+    Nh = int(np.ceil((img.shape[1] - fft_size) / step))
+    Nv = int(np.ceil((img.shape[0] - fft_size) / step))
+    const = pre_calc(fft_size2)
 
     with Parallel(n_jobs=n_jobs) as parallel:
         res = parallel(delayed(inner_loop)(v,
-                                           im,
+                                           img,
                                            fft_size, step,
                                            const) \
-                                           for v in range(FFT_SIZE2,
-                                                          im.shape[0] - FFT_SIZE2,
+                                           for v in range(fft_size2,
+                                                          img.shape[0] - fft_size2,
                                                           step))
         d, delta_d, omega, delta_omega = zip(*res)
 
@@ -396,15 +396,15 @@ def analyze(im, fft_size, step, n_jobs):
             np.array(delta_omega).reshape(Nv, Nh))
 
 
-def sub_imageplot(data, ax, title, limits):
-    """Plot image ``data`` at axes instance ``ax``. Add title ``title`` and
+def sub_imageplot(data, this_ax, title, limits):
+    """Plot image ``data`` at axes instance ``this_ax``. Add title ``title`` and
     use scale given by ``limits``
     """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    im = ax.imshow(data, cmap='jet', vmin=limits[0], vmax=limits[1], origin='upper')
+    img = this_ax.imshow(data, cmap='jet', vmin=limits[0], vmax=limits[1], origin='upper')
     # Create divider for existing axes instance
-    divider = make_axes_locatable(ax)
+    divider = make_axes_locatable(this_ax)
     # Append axes to the right of ax, with 20% width of ax
     cax = divider.append_axes("right", size="20%", pad=0.05)
     # Create colorbar in the appended axes
@@ -413,27 +413,27 @@ def sub_imageplot(data, ax, title, limits):
     if title == 'direction':
         ticks = np.linspace(0, np.pi, num=9, endpoint=True)
         labels = ['W', '', 'NW', '', 'N', '', 'NE', '', 'E']
-        cbar = plt.colorbar(im, cax=cax, ticks=ticks)
+        cbar = plt.colorbar(img, cax=cax, ticks=ticks)
         cbar.ax.set_yticklabels(labels)
         cbar.ax.invert_yaxis()  # W at top, E at bottom
         cbar.set_label('direction  [-]')
     else:
-        cbar = plt.colorbar(im, cax=cax)
+        cbar = plt.colorbar(img, cax=cax)
         if title == 'd_values':
             cbar.set_label('d value  [pixel]')
         if title == 'coherence':
             cbar.set_label('coherence  [A.U.]')
         if title == 'spread':
             cbar.set_label(r'$\sigma_\mathrm{dir}$  [$^\circ$]')
-    ax.set_title(title)
-    ax.xaxis.set_visible(False)
-    ax.yaxis.set_visible(False)
+    this_ax.set_title(title)
+    this_ax.xaxis.set_visible(False)
+    this_ax.yaxis.set_visible(False)
 
 
 def main():
     """main function
     """
-    global _tune_max_frequency2
+    global TUNE_MAX_FREQUENCY2
     supported = ','.join(plt.figure().canvas.get_supported_filetypes())
     plt.close()
 
@@ -459,7 +459,7 @@ def main():
                         version='%(prog)s {version}'.format(version=__version__))
     args = parser.parse_args()
 
-    _tune_max_frequency2 = (args.FFT_size // 2)**2
+    TUNE_MAX_FREQUENCY2 = (args.FFT_size // 2)**2
 
     data = imread(args.file, mode='I')
     d_value, coherence, direction, spread = analyze(data,
