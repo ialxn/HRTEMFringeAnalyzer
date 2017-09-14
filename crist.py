@@ -309,13 +309,13 @@ def inner_loop(v, im, fft_size, step, const):
         # equalize contrast in each roi: -0.5 .. 0.5
         roi = (roi + roi.min()) / roi.max()
         roi -= roi.mean()
+
         power_spectrum = fftshift(np.abs(fft2(han2d * roi)**2))
-        level = noise_floor(power_spectrum, r2)
 
         # set very low and very high frequencies to zero (mask)
-        # set to zero all frequencies with power smaller than noise floor (level)
+        # set to zero all frequencies with power smaller than noise floor
         power_spectrum[mask] = 0
-        power_spectrum[power_spectrum <= level] = 0
+        power_spectrum[power_spectrum <= noise_floor(power_spectrum, r2)] = 0
 
         d[rh], delta_d[rh] = determine_lattice_const(power_spectrum, r2)
         omega[rh], delta_omega[rh] = analyze_direction(power_spectrum, r2, phi)
