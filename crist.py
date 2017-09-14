@@ -390,16 +390,13 @@ def analyze(im, fft_size, step, n_jobs):
             np.array(delta_omega).reshape(Nv, Nh))
 
 
-def sub_imageplot(data, ax, title):
+def sub_imageplot(data, ax, title, limits):
     """Plot image ``data`` at axes instance ``ax``. Add title ``title`` and
-    use scale ``vmin`` .. ``vmax``
+    use scale given by ``limits``
     """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    if title == 'direction':
-        im = ax.imshow(data, cmap='jet', vmin=0, vmax=np.pi, origin='upper')
-    else:
-        im = ax.imshow(data, cmap='jet', origin='upper')
+    im = ax.imshow(data, cmap='jet', vmin=limits[0], vmax=limits[1], origin='upper')
     # Create divider for existing axes instance
     divider = make_axes_locatable(ax)
     # Append axes to the right of ax, with 20% width of ax
@@ -488,10 +485,10 @@ def main():
 
     _, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
 
-    sub_imageplot(d_value, ax1, 'd_values')
-    sub_imageplot(coherence, ax2, 'coherence')
-    sub_imageplot(direction, ax3, 'direction')
-    sub_imageplot(np.rad2deg(spread), ax4, 'spread')
+    sub_imageplot(d_value, ax1, 'd_values', (None, None))
+    sub_imageplot(coherence, ax2, 'coherence', (None, None))
+    sub_imageplot(direction, ax3, 'direction', (0.0, np.pi))
+    sub_imageplot(np.rad2deg(spread), ax4, 'spread', (None, None))
 
     plt.tight_layout()
 
