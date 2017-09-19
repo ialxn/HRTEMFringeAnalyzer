@@ -375,7 +375,6 @@ def analyze(img, fft_size, step, n_jobs):
     # x-axis is im.shape[1] -> horizontal (left->right)
     # y-axis is im.shape[0] -> vertical (top->down)
     # indices v,h for center of roi in image
-    # indices rv, rh for result arrays
     Nh = int(np.ceil((img.shape[1] - fft_size) / step))
     Nv = int(np.ceil((img.shape[0] - fft_size) / step))
     const = pre_calc(fft_size2)
