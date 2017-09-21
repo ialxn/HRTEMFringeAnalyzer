@@ -432,44 +432,39 @@ def sub_imageplot(data, this_ax, title, limits):
 def main():
     """main function
     """
-    global TUNE_MAX_FREQUENCY2
-    supported = ','.join(plt.figure().canvas.get_supported_filetypes())
-    plt.close()
+    def parse_command_line():
+        """Parse command line arguments and return them
+        """
+        parser = ArgumentParser(description='Analyze local cristallinity of data')
+        parser.add_argument('-f', '--file', metavar='FILE',
+                            type=str, required=True,
+                            help='Name of data file. Remove outliers (bright and dark) before.')
+        parser.add_argument('-F', '--FFT_size', metavar='N',
+                            type=int, default=128,
+                            help='Size of moving window (NxN) [128].')
+        parser.add_argument('-j', '--jobs', metavar='N',
+                            type=int, default=1,
+                            help='Number of threads to be started [1].')
+        parser.add_argument('-s', '--step', metavar='S',
+                            type=int, default=32,
+                            help='Step size (x and y) in pixels of moving window [32]')
+        parser.add_argument('-S', '--save',
+                            action='store_true', default=False,
+                            help='Store result in gzipped text files')
+        parser.add_argument('-o', '--output', metavar='FILE', type=str,
+                            help='Output to file. Supported formats: ' + supported)
+        parser.add_argument('-v', '--version', action='version',
+                            version='%(prog)s {version}'.format(version=__version__))
+        return parser.parse_args()
 
-    parser = ArgumentParser(description='Analyze local cristallinity of data')
-    parser.add_argument('-f', '--file', metavar='FILE',
-                        type=str, required=True,
-                        help='Name of data file. Remove outliers (bright and dark) before.')
-    parser.add_argument('-F', '--FFT_size', metavar='N',
-                        type=int, default=128,
-                        help='Size of moving window (NxN) [128].')
-    parser.add_argument('-j', '--jobs', metavar='N',
-                        type=int, default=1,
-                        help='Number of threads to be started [1].')
-    parser.add_argument('-s', '--step', metavar='S',
-                        type=int, default=32,
-                        help='Step size (x and y) in pixels of moving window [32]')
-    parser.add_argument('-S', '--save',
-                        action='store_true', default=False,
-                        help='Store result in gzipped text files')
-    parser.add_argument('-o', '--output', metavar='FILE', type=str,
-                        help='Output to file. Supported formats: ' + supported)
-    parser.add_argument('-v', '--version', action='version',
-                        version='%(prog)s {version}'.format(version=__version__))
-    args = parser.parse_args()
 
-    TUNE_MAX_FREQUENCY2 = (args.FFT_size // 2)**2
-
-    data = imread(args.file, mode='I')
-    d_value, coherence, direction, spread = analyze(data,
-                                                    args.FFT_size,
-                                                    args.step,
-                                                    args.jobs)
-
-    if args.save:
+    def save_data(args, shape, data):
+        """Save data in ASCII files
+        """
+        d_value, coherence, direction, spread = data
         header = '#\n' \
         + '# crist.py version {}\n'.format(__version__) \
-        + '# Results for {} ({}x{} [vxh])\n'.format(args.file, data.shape[0], data.shape[1]) \
+        + '# Results for {} ({}x{} [vxh])\n'.format(args.file, shape[0], shape[1]) \
         + '# FFT window: {}x{}\n'.format(args.FFT_size, args.FFT_size) \
         + '#       step: {}\n'.format(args.step) \
         + '#\n' \
@@ -487,6 +482,24 @@ def main():
                    delimiter='\t', header=header, comments='')
         np.savetxt(base_name + '_spread' + '.dat.gz', spread,
                    delimiter='\t', header=header, comments='')
+
+
+    global TUNE_MAX_FREQUENCY2
+    supported = ','.join(plt.figure().canvas.get_supported_filetypes())
+    plt.close()
+
+    args = parse_command_line()
+
+    TUNE_MAX_FREQUENCY2 = (args.FFT_size // 2)**2
+
+    data = imread(args.file, mode='I')
+    d_value, coherence, direction, spread = analyze(data,
+                                                    args.FFT_size,
+                                                    args.step,
+                                                    args.jobs)
+
+    if args.save:
+        save_data(args, data.shape, (d_value, coherence, direction, spread))
 
     _, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
 
