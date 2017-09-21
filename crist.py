@@ -254,7 +254,7 @@ def determine_lattice_const(power_spectrum, radius2):
     return d, delta_d
 
 
-def inner_loop(v, im, fft_size, step, r2, phi, mask, han2d):
+def inner_loop(v, im, fft_size, step, const):
     """
     Analyzes horizontal line ``v`` in image ``im``
 
@@ -268,20 +268,21 @@ def inner_loop(v, im, fft_size, step, r2, phi, mask, han2d):
         step : int
             Horizontal (and vertical) step size to translate
             window
-        r2 : np.array
-            squared distances of each pixel in the 2D FFT relative to the one
-            that represents the zero frequency
-        phi : np.array
-            angle of each pixel in 2D FFT relative to the pixel that
-            represents the zero frequency
-        mask : np.array
-            mask that discards very low frequencies (index 1,2) and high
-            frequencies (indices above FFT_SIZE2)
-        han2d : np.array
-            2D Hanning window applied to roi before the 2D FFT
+        const : tuple of
+            r2 : np.array
+                squared distances of each pixel in the 2D FFT relative to the one
+                that represents the zero frequency
+            phi : np.array
+                angle of each pixel in 2D FFT relative to the pixel that
+                represents the zero frequency
+            mask : np.array
+                mask that discards very low frequencies (index 1,2) and high
+                frequencies (indices above FFT_SIZE2)
+            han2d : np.array
+                2D Hanning window applied to roi before the 2D FFT
 
     Returns
-        List of np arrays of length ``Nh``
+        tuple of np arrays of length ``Nh``
         d : np array
             Period found
         delta_d : np array
@@ -291,6 +292,7 @@ def inner_loop(v, im, fft_size, step, r2, phi, mask, han2d):
         delta_omega : np array
             Spread of direction vector
     """
+    r2, phi, mask, han2d = const
     FFT_SIZE2 = fft_size // 2
     Nh = int(np.ceil((im.shape[1] - fft_size) / step))
     d = np.zeros([Nh])
@@ -344,6 +346,31 @@ def analyze(im, fft_size, step, n_jobs):
         delta_omega : np array
             Spread of direction vector
     """
+    def pre_calc(FFT_SIZE2):
+        """Prepare arrays that are needed many times to deal with the 2D Fourier
+        transforms
+        x, y are indices of the frequency shifted transforms, i.e. the
+        zero frequency (DC term) is now at [0,0]
+        """
+        x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
+                        -FFT_SIZE2 : FFT_SIZE2]
+        # r2: the geometrical distance (index) squared of a given entry in the FFT
+        r2 = x*x + y*y
+        # phi: the geometrical azimuth of a given entry in the FFT with the range
+        #      -pi .. phi .. 0 mapped to 0 .. phi .. pi
+        phi = np.arctan2(x, y)
+        phi[phi < 0] += np.pi
+
+        # mask: discard very low frequencies (index 1,2,3,4) and high frequencies
+        # (indices above _tune_max_frequency)
+        mask = ~((r2 > _tune_min_frequency2) & (r2 < _tune_max_frequency2))
+        # 2D hanning window
+        han = np.hanning(fft_size)
+        han2d = np.sqrt(np.outer(han, han))
+
+        return (r2, phi, mask, han2d)
+
+
     FFT_SIZE2 = fft_size // 2
     # x-axis is im.shape[1] -> horizontal (left->right)
     # y-axis is im.shape[0] -> vertical (top->down)
@@ -351,34 +378,13 @@ def analyze(im, fft_size, step, n_jobs):
     # indices rv, rh for result arrays
     Nh = int(np.ceil((im.shape[1] - fft_size) / step))
     Nv = int(np.ceil((im.shape[0] - fft_size) / step))
-
-    ###########################################################################
-    # prepare arrays that are needed many times to deal with the 2D Fourier
-    # transforms
-    # x, y are indices of the frequency shifted transforms, i.e. the
-    # zero frequency (DC term) is now at [0,0]
-    x, y = np.ogrid[-FFT_SIZE2 : FFT_SIZE2,
-                    -FFT_SIZE2 : FFT_SIZE2]
-    # r2: the geometrical distance (index) squared of a given entry in the FFT
-    r2 = x*x + y*y
-    # phi: the geometrical azimuth of a given entry in the FFT with the range
-    #      -pi .. phi .. 0 mapped to 0 .. phi .. pi
-    phi = np.arctan2(x, y)
-    phi[phi < 0] += np.pi
-
-    # mask: discard very low frequencies (index 1,2,3,4) and high frequencies
-    # (indices above _tune_max_frequency)
-    mask = ~((r2 > _tune_min_frequency2) & (r2 < _tune_max_frequency2))
-    # 2D hanning window
-    han = np.hanning(fft_size)
-    han2d = np.sqrt(np.outer(han, han))
-    ###########################################################################
+    const = pre_calc(FFT_SIZE2)
 
     with Parallel(n_jobs=n_jobs) as parallel:
         res = parallel(delayed(inner_loop)(v,
                                            im,
                                            fft_size, step,
-                                           r2, phi, mask, han2d) \
+                                           const) \
                                            for v in range(FFT_SIZE2,
                                                           im.shape[0] - FFT_SIZE2,
                                                           step))
