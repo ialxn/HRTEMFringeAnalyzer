@@ -306,6 +306,7 @@ def inner_loop(v, img, fft_size, step, const):
         # set to zero all frequencies with power smaller than noise floor
         power_spectrum[mask] = 0
         power_spectrum[power_spectrum <= noise_floor(power_spectrum, r2)] = 0
+        power_spectrum[power_spectrum is 0] = np.nan
 
         d[rh], delta_d[rh] = determine_lattice_const(power_spectrum, r2)
         omega[rh], delta_omega[rh] = analyze_direction(power_spectrum, r2, phi)
