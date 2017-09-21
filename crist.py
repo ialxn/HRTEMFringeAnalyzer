@@ -31,19 +31,9 @@ __version__ = ''
 #                             mean intensity
 # ``TUNE_NOISE``: everything below mean() + ``TUNE_NOISE``*std is considered
 #                  noise
-# ``TUNE_MIN_FREQUENCY2``: filter out low frequencies and DC term of FFT.
-#                           ``TUNE_MIN_FREQUENCY2`` corresponds to the index
-#                           (after flipping quadrants) squared.
-#
-# ``TUNE_MAX_FREQUENCY2``: filter out high frequencies of FFT.
-#                           ``TUNE_MAX_FREQUENCY2`` corresponds to the index
-#                           (after flipping quadrants) squared.
-#
 TUNE_THRESHOLD_DIRECTION = 5.0
 TUNE_THRESHOLD_PERIOD = 25.0
 TUNE_NOISE = 4.0
-TUNE_MIN_FREQUENCY2 = 4 * 4
-TUNE_MAX_FREQUENCY2 = 0
 #
 @jit(nopython=True, nogil=True, cache=True)
 def gaussian(x, *p):
@@ -484,12 +474,23 @@ def main():
                    delimiter='\t', header=header, comments='')
 
 
+    global TUNE_MIN_FREQUENCY2
     global TUNE_MAX_FREQUENCY2
+
     supported = ','.join(plt.figure().canvas.get_supported_filetypes())
     plt.close()
 
     args = parse_command_line()
 
+    # ``TUNE_MIN_FREQUENCY2``: filter out low frequencies and DC term of FFT.
+    #                           ``TUNE_MIN_FREQUENCY2`` corresponds to the index
+    #                           (after flipping quadrants) squared.
+    #
+    # ``TUNE_MAX_FREQUENCY2``: filter out high frequencies of FFT.
+    #                           ``TUNE_MAX_FREQUENCY2`` corresponds to the index
+    #                           (after flipping quadrants) squared.
+    #
+    TUNE_MIN_FREQUENCY2 = 4 * 4 # seems a good value
     TUNE_MAX_FREQUENCY2 = (args.FFT_size // 2)**2
 
     data = imread(args.file, mode='I')
