@@ -400,7 +400,7 @@ def sub_imageplot(data, this_ax, title, limits):
     # Create colorbar in the appended axes
     # Tick locations can be set with the kwarg `ticks`
     # and the format of the ticklabels with kwarg `format`
-    if title == 'direction':
+    if title == r'direction ($\phi$)':
         ticks = np.linspace(0, np.pi, num=9, endpoint=True)
         labels = ['W', '', 'NW', '', 'N', '', 'NE', '', 'E']
         cbar = plt.colorbar(img, cax=cax, ticks=ticks)
@@ -409,12 +409,12 @@ def sub_imageplot(data, this_ax, title, limits):
         cbar.set_label('direction  [-]')
     else:
         cbar = plt.colorbar(img, cax=cax)
-        if title == 'd_values':
-            cbar.set_label('d value  [pixel]')
-        if title == 'coherence':
-            cbar.set_label('coherence  [A.U.]')
-        if title == 'spread':
-            cbar.set_label(r'$\sigma_\mathrm{dir}$  [$^\circ$]')
+        if title == r'spacing ($d$)':
+            cbar.set_label('$d$  [pixel]')
+        if title == r'coherence ($1/\sigma_d$)':
+            cbar.set_label(r'$1/\sigma_d$  [A.U.]')
+        if title == r'spread ($\sigma_\phi$)':
+            cbar.set_label(r'$\sigma_d$  [$^\circ$]')
     this_ax.set_title(title)
     this_ax.xaxis.set_visible(False)
     this_ax.yaxis.set_visible(False)
@@ -472,7 +472,7 @@ def main():
         + '# both, for horizontal and vertical index\n' \
         + '#'
         base_name, _ = args.file.rsplit(sep='/')[-1].rsplit(sep='.')
-        np.savetxt(base_name + '_period' + '.dat.gz', d_value,
+        np.savetxt(base_name + '_spacing' + '.dat.gz', d_value,
                    delimiter='\t', header=header, comments='')
         np.savetxt(base_name + '_coherence' + '.dat.gz', coherence,
                    delimiter='\t', header=header, comments='')
@@ -512,10 +512,10 @@ def main():
 
     _, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
 
-    sub_imageplot(d_value, ax1, 'd_values', (None, None))
-    sub_imageplot(coherence, ax2, 'coherence', (None, None))
-    sub_imageplot(direction, ax3, 'direction', (0.0, np.pi))
-    sub_imageplot(np.rad2deg(spread), ax4, 'spread', (None, None))
+    sub_imageplot(d_value, ax1, r'spacing ($d$)', (None, None))
+    sub_imageplot(coherence, ax2, r'coherence ($1/\sigma_d$)', (None, None))
+    sub_imageplot(direction, ax3, r'direction ($\phi$)', (0.0, np.pi))
+    sub_imageplot(np.rad2deg(spread), ax4, r'spread ($\sigma_\phi$)', (None, None))
 
     plt.tight_layout()
 
