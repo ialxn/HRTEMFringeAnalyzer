@@ -455,6 +455,13 @@ def main():
         d_value, coherence, direction, spread = data
         header = '#\n' \
         + '# crist.py version {}\n'.format(__version__) \
+        + '# Tuning knobs:\n' \
+        + '#        TUNE_MIN_FREQUENCY2: {}\n'.format(TUNE_MIN_FREQUENCY2) \
+        + '#        TUNE_MAX_FREQUENCY2: {}\n'.format(TUNE_MAX_FREQUENCY2) \
+        + '#                 TUNE_NOISE: {}\n'.format(TUNE_NOISE) \
+        + '#   TUNE_THRESHOLD_DIRECTION: {}\n'.format(TUNE_THRESHOLD_DIRECTION) \
+        + '#      TUNE_THRESHOLD_PERIOD: {}\n'.format(TUNE_THRESHOLD_PERIOD) \
+        + '#\n' \
         + '# Results for {} ({}x{} [vxh])\n'.format(args.file, shape[0], shape[1]) \
         + '# FFT window: {}x{}\n'.format(args.FFT_size, args.FFT_size) \
         + '#       step: {}\n'.format(args.step) \
