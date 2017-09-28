@@ -358,7 +358,7 @@ class HRTEMCrystallinity:
     def __update_precalc(self):
         """
         Updates/sets all attributes that depend on ``self.fft_size`` and invalidates
-        results by setting ``data_is_valid = False``.
+        results by setting ``results_are_valid = False``.
         This is used in ``__init__()`` and is triggered by the ``fft_size`` setter.
 
         Constant data:
@@ -383,7 +383,7 @@ class HRTEMCrystallinity:
         self.mask = ~((self.r2 > self.TUNE_MIN_FREQUENCY2) & (self.r2 < self.TUNE_MAX_FREQUENCY2))
         han = np.hanning(self.fft_size)
         self.han2d = np.sqrt(np.outer(han, han))
-        self.data_is_valid = False
+        self.results_are_valid = False
 
 
 
@@ -405,7 +405,7 @@ class HRTEMCrystallinity:
 
     @step.setter
     def step(self, step):
-        self.data_is_valid = False
+        self.results_are_valid = False
         self.__step = step
 
     @property
@@ -417,7 +417,7 @@ class HRTEMCrystallinity:
         try:
             self.image_data = imread(fname, mode='I')
             self.__image_fname = fname
-            self.data_is_valid = False
+            self.results_are_valid = False
         except:
             raise ValueError("Could not read file {}".format(fname))
 
@@ -472,7 +472,7 @@ class HRTEMCrystallinity:
         """Summary plot of results to ``outfname`` (if provided) or to pop-up
         window. Individualt limits can be provided.
         """
-        if not self.data_is_valid:
+        if not self.results_are_valid:
             print('No valid data to plot', file=sys.stderr)
             return
 
@@ -504,7 +504,7 @@ class HRTEMCrystallinity:
     def save_data(self, compressed=True):
         """Save data in (compressed) ASCII files
         """
-        if not self.data_is_valid:
+        if not self.results_are_valid:
             print('No valid data to save', file=sys.stderr)
             return
 
@@ -570,7 +570,7 @@ class HRTEMCrystallinity:
         self.sigma_d = np.array(sigma_d).reshape(Nv, Nh)
         self.phi = np.array(phi).reshape(Nv, Nh)
         self.sigma_phi = np.array(sigma_phi).reshape(Nv, Nh)
-        self.data_is_valid = True
+        self.results_are_valid = True
 
 
 
