@@ -464,11 +464,11 @@ class HRTEMCrystallinity:
         this_ax.yaxis.set_visible(False)
 
 
-    def plot_data(self, outfname=None,
-                  limits_d=(None, None),
-                  limits_sigma_d=(None, None),
-                  limits_phi=(0.0, np.pi),
-                  limits_sigma_phi=(None, None)):
+    def summarize_data(self, outfname=None,
+                       limits_d=(None, None),
+                       limits_sigma_d=(None, None),
+                       limits_phi=(0.0, np.pi),
+                       limits_sigma_phi=(None, None)):
         """Summary plot of results to ``outfname`` (if provided) or to pop-up
         window. Individualt limits can be provided.
         """
@@ -611,16 +611,16 @@ def main():
     H = HRTEMCrystallinity(fft_size=args.FFT_size, step=args.step, jobs=args.jobs, fname=args.file)
     print(H.fft_size, H.step)
     H.analyze()
-    H.plot_data('test32.pdf')
+    H.summarize_data('test32.pdf')
     H.save_data(compressed=False)
     H.fft_size = 128
-    H.plot_data('invalid.pdf')
+    H.summarize_data('invalid.pdf')
     H.step = 30
     print(H.fft_size, H.step)
     H.analyze()
     H.save_data()
-    H.plot_data('test128.pdf')
-    H.plot_data('test128_b.pdf', limits_d=(15.0, 20.0))
+    H.summarize_data('test128.pdf')
+    H.summarize_data('test128_b.pdf', limits_d=(15.0, 20.0))
 
 if __name__ == '__main__':
     main()
