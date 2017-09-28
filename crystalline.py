@@ -456,7 +456,7 @@ class HRTEMCrystallinity:
                 cbar.set_label('$d$  [pixel]')
             if title == r'coherence ($1/\sigma_d$)':
                 cbar.set_label(r'$1/\sigma_d$  [A.U.]')
-            if title == r'spread ($np.array(d).reshape(Nv, Nh)\sigma_\phi$)':
+            if title == r'spread ($\sigma_\phi$)':
                 cbar.set_label(r'$\sigma_d$  [$^\circ$]')
 
         this_ax.set_title(title)
@@ -498,6 +498,54 @@ class HRTEMCrystallinity:
                 print('Cannot save figure ({})'.format(outfname))
                 print('Supported formats: {}'.format(self.supported))
                 plt.show()
+
+    def plot_overlayed(self, datum, outfname=None, limits=(None, None)):
+        """
+        """
+        if not self.results_are_valid:
+            print('No valid data to plot', file=sys.stderr)
+            return
+
+        ax = plt.subplot(111)
+        ax.imshow(self.image_data, extent=None, aspect='equal', cmap='gray')
+        x = np.arange(self.fft_size2, self.image_data.shape[1] - self.fft_size2, self.step)
+        y = np.arange(self.fft_size2, self.image_data.shape[0] - self.fft_size2, self.step)
+        cax = ax.contourf(x, y, datum, alpha=0.5, cmap='jet', vmin=limits[0], vmax=limits[1])
+        if datum is self.d:
+            cbar = plt.colorbar(cax, shrink=0.7)
+            cbar.set_label('$d$  [pixel]')
+            ax.set_title(r'spacing ($d$)')
+        if datum is self.sigma_d:
+            cbar = plt.colorbar(cax, shrink=0.7)
+            cbar.set_label('$1/\sigma_d$  [A.U.]')
+            ax.set_title(r'coherence ($1/\sigma_d$)')
+        if datum is self.phi:
+            ticks = np.linspace(0, np.pi, num=9, endpoint=True)
+            labels = ['W', '', 'NW', '', 'N', '', 'NE', '', 'E']
+            cbar = plt.colorbar(cax, ticks=ticks, shrink=0.7)
+            cbar.ax.set_yticklabels(labels)
+            cbar.ax.invert_yaxis()  # W at top, E at bottom
+            cbar.set_label('direction  [-]')
+            ax.set_title(r'direction ($\phi$)')
+        if datum is self.sigma_phi:
+            cbar = plt.colorbar(cax, shrink=0.7)
+            cbar.set_label('$\sigma_\phi$  [A.U.]')
+            ax.set_title(r'$\sigma_d$  [$^\circ$]')
+
+        ax.xaxis.set_visible(False)
+        ax.yaxis.set_visible(False)
+
+        if outfname is None:
+            plt.show()
+        else:
+            try:
+                plt.savefig(outfname)
+            except ValueError:
+                print('Cannot save figure ({})'.format(outfname))
+                print('Supported formats: {}'.format(self.supported))
+                plt.show()
+
+
 
 
 
@@ -621,6 +669,8 @@ def main():
     H.save_data()
     H.summarize_data('test128.pdf')
     H.summarize_data('test128_b.pdf', limits_d=(15.0, 20.0))
+    for datum in (H.d, H.sigma_d, H.phi, H.sigma_phi):
+        H.plot_overlayed(datum)
 
 if __name__ == '__main__':
     main()
