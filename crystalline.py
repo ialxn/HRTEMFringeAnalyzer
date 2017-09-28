@@ -388,6 +388,7 @@ class HRTEMCrystallinity:
 
     @step.setter
     def step(self, step):
+        self.data_is_valid = False
         self.__step = step
 
     @property
@@ -399,6 +400,7 @@ class HRTEMCrystallinity:
         try:
             self.image_data = imread(fname, mode='I')
             self.__image_fname = fname
+            self.data_is_valid = False
         except:
             raise ValueError("Could not read file {}".format(fname))
 
