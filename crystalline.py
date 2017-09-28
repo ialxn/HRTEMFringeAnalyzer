@@ -500,7 +500,15 @@ class HRTEMCrystallinity:
                 plt.show()
 
     def plot_overlayed(self, datum, outfname=None, limits=(None, None)):
-        """
+        """Plots selected result as overlay on image
+
+        Parameters
+            datum : attribute
+                Result to be used as overlay
+            outfname : string
+                Filename of output file or None (plot to pop-up window)
+            limits : (float, float)
+                z-limits for datum. (minimum, maximum) or (None, None) for autoscale
         """
         if not self.results_are_valid:
             print('No valid data to plot', file=sys.stderr)
@@ -517,7 +525,7 @@ class HRTEMCrystallinity:
             ax.set_title(r'spacing ($d$)')
         if datum is self.sigma_d:
             cbar = plt.colorbar(cax, shrink=0.7)
-            cbar.set_label('$1/\sigma_d$  [A.U.]')
+            cbar.set_label(r'$1/\sigma_d$  [A.U.]')
             ax.set_title(r'coherence ($1/\sigma_d$)')
         if datum is self.phi:
             ticks = np.linspace(0, np.pi, num=9, endpoint=True)
@@ -529,7 +537,7 @@ class HRTEMCrystallinity:
             ax.set_title(r'direction ($\phi$)')
         if datum is self.sigma_phi:
             cbar = plt.colorbar(cax, shrink=0.7)
-            cbar.set_label('$\sigma_\phi$  [A.U.]')
+            cbar.set_label(r'$\sigma_\phi$  [A.U.]')
             ax.set_title(r'$\sigma_d$  [$^\circ$]')
 
         ax.xaxis.set_visible(False)
