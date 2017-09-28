@@ -386,7 +386,6 @@ class HRTEMCrystallinity:
         self.results_are_valid = False
 
 
-
     @property
     def fft_size(self):
         return self.__fft_size
@@ -420,6 +419,7 @@ class HRTEMCrystallinity:
             self.results_are_valid = False
         except:
             raise ValueError("Could not read file {}".format(fname))
+
 
     @staticmethod
     def __sub_imageplot(data, this_ax, title, limits):
@@ -499,6 +499,12 @@ class HRTEMCrystallinity:
                 print('Supported formats: {}'.format(self.supported))
                 plt.show()
 
+    @staticmethod
+    def __finish_overlay(ax, cax, label, title):
+            cbar = plt.colorbar(cax, shrink=0.7)
+            cbar.set_label('$d$  [pixel]')
+            ax.set_title(r'spacing ($d$)')
+
     def plot_overlayed(self, datum, outfname=None, limits=(None, None)):
         """Plots selected result as overlay on image
 
@@ -520,13 +526,9 @@ class HRTEMCrystallinity:
         y = np.arange(self.fft_size2, self.image_data.shape[0] - self.fft_size2, self.step)
         cax = ax.contourf(x, y, datum, alpha=0.5, cmap='jet', vmin=limits[0], vmax=limits[1])
         if datum is self.d:
-            cbar = plt.colorbar(cax, shrink=0.7)
-            cbar.set_label('$d$  [pixel]')
-            ax.set_title(r'spacing ($d$)')
+            self.__finish_overlay(ax, cax, '$d$  [pixel]', r'spacing ($d$)')
         if datum is self.sigma_d:
-            cbar = plt.colorbar(cax, shrink=0.7)
-            cbar.set_label(r'$1/\sigma_d$  [A.U.]')
-            ax.set_title(r'coherence ($1/\sigma_d$)')
+            self.__finish_overlay(ax, cax, r'$1/\sigma_d$  [A.U.]', r'coherence ($1/\sigma_d$)')
         if datum is self.phi:
             ticks = np.linspace(0, np.pi, num=9, endpoint=True)
             labels = ['W', '', 'NW', '', 'N', '', 'NE', '', 'E']
@@ -536,9 +538,7 @@ class HRTEMCrystallinity:
             cbar.set_label('direction  [-]')
             ax.set_title(r'direction ($\phi$)')
         if datum is self.sigma_phi:
-            cbar = plt.colorbar(cax, shrink=0.7)
-            cbar.set_label(r'$\sigma_\phi$  [A.U.]')
-            ax.set_title(r'$\sigma_d$  [$^\circ$]')
+            self.__finish_overlay(ax, cax, r'$\sigma_\phi$  [A.U.]', r'$\sigma_d$  [$^\circ$]')
 
         ax.xaxis.set_visible(False)
         ax.yaxis.set_visible(False)
@@ -552,9 +552,6 @@ class HRTEMCrystallinity:
                 print('Cannot save figure ({})'.format(outfname))
                 print('Supported formats: {}'.format(self.supported))
                 plt.show()
-
-
-
 
 
     def save_data(self, compressed=True):
