@@ -438,20 +438,22 @@ class HRTEMCrystallinity:
         this_ax.yaxis.set_visible(False)
 
 
-    def plot_data(self, outfname=None):
+    def plot_data(self, outfname=None, limits_d=(None, None),
+                                       limits_sigma_d=(None, None),
+                                       limits_phi=(0.0, np.pi),
+                                       limits_sigma_phi=(None, None)):
         """
         """
         if not self.data_is_valid:
             print('No valid data to plot', file=sys.stderr)
             return
 
-
         _, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
 
-        self.__sub_imageplot(self.d, ax1, r'spacing ($d$)', (None, None))
-        self.__sub_imageplot(self.sigma_d, ax2, r'coherence ($1/\sigma_d$)', (None, None))
-        self.__sub_imageplot(self.Phi, ax3, r'direction ($\phi$)', (0.0, np.pi))
-        self.__sub_imageplot(np.rad2deg(self.sigma_Phi), ax4, r'spread ($\sigma_\phi$)', (None, None))
+        self.__sub_imageplot(self.d, ax1, r'spacing ($d$)', limits_d)
+        self.__sub_imageplot(self.sigma_d, ax2, r'coherence ($1/\sigma_d$)', limits_sigma_d)
+        self.__sub_imageplot(self.Phi, ax3, r'direction ($\phi$)', limits_phi)
+        self.__sub_imageplot(np.rad2deg(self.sigma_Phi), ax4, r'spread ($\sigma_\phi$)', limits_sigma_phi)
 
         plt.tight_layout()
 
@@ -582,6 +584,7 @@ def main():
     H.analyze()
     H.save_data()
     H.plot_data('test128.pdf')
+    H.plot_data('test128_b.pdf', limits_d=(15.0, 20.0))
 
 if __name__ == '__main__':
     main()
