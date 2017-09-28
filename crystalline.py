@@ -20,7 +20,7 @@ from numba import jit
 from joblib import Parallel, delayed
 
 @jit(nopython=True, nogil=True, cache=True)
-def gaussian(x, *p):
+def __gaussian(x, *p):
     """Calculate Gaussian and offset
 
     Parameters:
@@ -41,20 +41,19 @@ def gaussian(x, *p):
     return A * np.exp(-factor*((x - x_0) / sigma)**2) + offset
 
 
-def find_peak(x, y):
-    """Calculate peak and FWHH of ``y(x)`` by fitting a gaussian plus offset
-    to the region around the maximum.
+def __find_peak(x, y):
+    """Determines peak position and FWHH
 
     Parameters:
         x : array of floats
             x values
         y : array of floats
-            y values (at x)
+            corresponding y values
 
     Returns
-        max_value : float
+        x_center : float
             x value for which y=f(x) is maximum
-        delta_value : float
+        sigma : float
             FWHH
     """
     idx_max = np.argmax(y)
@@ -64,37 +63,37 @@ def find_peak(x, y):
            y.mean() * 0.5]
     try:
         warnings.simplefilter('ignore', OptimizeWarning)
-        coeffs, cov = curve_fit(gaussian,
+        coeffs, cov = curve_fit(__gaussian,
                                 x,
                                 y,
                                 p0=p_0)
     except (ValueError, RuntimeError):
-        max_value = np.nan
-        delta_value = np.nan
+        x_center = np.nan
+        sigma = np.nan
     else:
         # successful fit:
         #   max_value: in (validated) x-range and finite error
         #   delta_value: positive and covariance is positive
         if (coeffs[1] > x[0]) and (coeffs[1] < x[-1]) and np.isfinite(cov[1, 1]):
-            max_value = coeffs[1]
+            x_center = coeffs[1]
         else:
-            max_value = np.nan
+            x_center = np.nan
 
         if (coeffs[2] > 0.0) and (cov[2, 2] > 0.0):
-            delta_value = coeffs[2]
+            sigma = coeffs[2]
         else:
-            delta_value = np.nan
+            sigma = np.nan
 
-    return max_value, delta_value
+    return x_center, sigma
 
 
-def noise_floor(window, radius_squared, TUNE_NOISE):
-    """Determine aproximate noise floor of FFT ``window``
+def __noise_floor(window, r2, TUNE_NOISE):
+    """Determine aproximate noise floor of  ``window``
 
     Parameters:
         window : np array
             Window to be analyzed
-        radius_squared : np.array
+        r2 : np.array
             squared distances of data points to center of ``s``
 
     Ad-hoc definition of the noise floor:
@@ -105,40 +104,42 @@ def noise_floor(window, radius_squared, TUNE_NOISE):
 
     Returns
         noise_floor : float
-            mean + ``TUNE_NOISE``*sigma
+            mean + ``TUNE_NOISE`` * sigma
     """
-    mask = (radius_squared >= (window.shape[0] // 2)**2)
+    mask = (r2 >= (window.shape[0] // 2)**2)
     mean = window[mask].mean()
     error = window[mask].std()
 
     return mean + TUNE_NOISE * error
 
 
-def analyze_direction(window, radius_squared, phi, TUNE_THRESHOLD_DIRECTION):
+def __analyze_direction(window, r2, alpha, TUNE_THRESHOLD_DIRECTION):
     """Find peak in FFT window ``window`` and return its direction
     and angular spread
 
     Parameters:
         window : np.array
             2D Fourier transform
-        radius_squared : np.array
+        r2 : np.array
             squared distances of each pixel in the 2D FFT relative to the one
             that represents the zero frequency
-        phi : np.array
+        alpha : np.array
             angle of each pixel in 2D FFT relative to the pixel that
             represents the zero frequency
+        TUNE_THRESHOLD_DIRECTION : float
+            threshold value to discriminate noise peaks
 
     Returns
-        omega : float
+        phi : float
             predominant direction of periodicity (0..pi)
         delta_phi : float
             FWHH of ``omega``
     """
     bins = 36 # 10 degrees per bin
     warnings.simplefilter('ignore', RuntimeWarning)
-    angle, edges = np.histogram(phi.flatten(),
+    angle, edges = np.histogram(alpha.flatten(),
                                 bins=bins,
-                                weights=window.flatten() / radius_squared.flatten())
+                                weights=window.flatten() / r2.flatten())
 
     if np.nanmax(angle) > TUNE_THRESHOLD_DIRECTION * np.nanmean(angle):
         #   significant peak
@@ -165,36 +166,38 @@ def analyze_direction(window, radius_squared, phi, TUNE_THRESHOLD_DIRECTION):
         mask = ~np.isfinite(angle)
         angle[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), angle[~mask])
 
-        omega, delta_omega = find_peak(edges, angle)
+        phi, sigma_phi = __find_peak(edges, angle)
 
-        if np.isnan(delta_omega):
-            omega = np.nan
+        if np.isnan(sigma_phi):
+            phi = np.nan
         else:
             # because of the wrap-around omega could be larger than pi
-            if omega > np.pi:
-                omega -= np.pi
+            if phi > np.pi:
+                phi -= np.pi
     else:
-        omega = np.nan
-        delta_omega = np.nan
+        phi = np.nan
+        sigma_phi = np.nan
 
-    return omega, delta_omega
+    return phi, sigma_phi
 
 
-def determine_lattice_const(power_spectrum, radius2, TUNE_THRESHOLD_PERIOD):
+def __analyze_lattice_const(power_spectrum, r2, TUNE_THRESHOLD_PERIOD):
     """Determine lattice constant and coherence length from FFT. All calculations
     in pixel numbers.
 
     Parameters:
         power_spectrum : np.array
             abs(2D Fourier transform)
-        radius2 : np.array
+        r2 : np.array
             squared distances of each pixel in the 2D FFT relative to the one
             that represents the zero frequency i.e. frequency^2
+        TUNE_THRESHOLD_PERIOD : float
+            threshold value to discriminate noise peaks
 
     Returns
         d : float
             Period found
-        delta_d : float
+        sigma_d : float
             Coherence length (length of periodic structure) as A.U.
     """
     bins = power_spectrum.shape[0] // 2  # ad hoc definition
@@ -203,9 +206,9 @@ def determine_lattice_const(power_spectrum, radius2, TUNE_THRESHOLD_PERIOD):
     # we integrate azimuthally, thus noise at large ``r`` contributes more
     # than noise (or signal) at small ``r``
     warnings.simplefilter('ignore', RuntimeWarning)
-    power, edges = np.histogram(np.sqrt(radius2).flatten(),
+    power, edges = np.histogram(np.sqrt(r2).flatten(),
                                 bins=bins,
-                                weights=power_spectrum.flatten() / radius2.flatten())
+                                weights=power_spectrum.flatten() / r2.flatten())
 
     if np.nanmax(power) > TUNE_THRESHOLD_PERIOD * np.nanmean(power):
         # significant peak
@@ -215,17 +218,17 @@ def determine_lattice_const(power_spectrum, radius2, TUNE_THRESHOLD_PERIOD):
         mask = ~np.isfinite(power)
         power[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), power[~mask])
 
-        d, delta_d = find_peak(edges[ : -1], power)
+        d, sigma_d = __find_peak(edges[ : -1], power)
         # convert to periode
         d = power_spectrum.shape[0] / d
-        delta_d = 1.0 / delta_d
-        if np.isnan(delta_d):
+        sigma_d = 1.0 / sigma_d
+        if np.isnan(sigma_d):
             d = np.nan
     else:
         d = np.nan
-        delta_d = np.nan
+        sigma_d = np.nan
 
-    return d, delta_d
+    return d, sigma_d
 
 
 def inner_loop(v, img, fft_size, step, const, tune):
@@ -246,7 +249,7 @@ def inner_loop(v, img, fft_size, step, const, tune):
             r2 : np.array
                 squared distances of each pixel in the 2D FFT relative to the one
                 that represents the zero frequency
-            phi : np.array
+            aplha : np.array
                 angle of each pixel in 2D FFT relative to the pixel that
                 represents the zero frequency
             mask : np.array
@@ -259,21 +262,21 @@ def inner_loop(v, img, fft_size, step, const, tune):
         tuple of np arrays of length ``Nh``
         d : np array
             Period found
-        delta_d : np array
-            Coherence length (length of periodic structure) as A.U.
-        omega : np array
+        sigma_d : np array
+            Coherence length (length of periodic structure) as 1/sigma [A.U.]
+        phi : np array
             Direction of lattice (direction) vector of periodic structure
-        delta_omega : np array
-            Spread of direction vector
+        sigma_phi : np array
+            Error of direction vector
     """
-    r2, phi, mask, han2d = const
+    r2, alpha, mask, han2d = const
     TUNE_NOISE, TUNE_THRESHOLD_PERIOD, TUNE_THRESHOLD_DIRECTION = tune
     fft_size2 = fft_size // 2
     Nh = int(np.ceil((img.shape[1] - fft_size) / step))
     d = np.zeros([Nh])
-    delta_d = np.zeros([Nh])
-    omega = np.zeros([Nh])
-    delta_omega = np.zeros([Nh])
+    sigma_d = np.zeros([Nh])
+    phi = np.zeros([Nh])
+    sigma_phi = np.zeros([Nh])
 
     for rh, h in enumerate(range(fft_size2,
                                  img.shape[1] - fft_size2,
@@ -290,13 +293,15 @@ def inner_loop(v, img, fft_size, step, const, tune):
         # set very low and very high frequencies to zero (mask)
         # set to zero all frequencies with power smaller than noise floor
         power_spectrum[mask] = 0
-        power_spectrum[power_spectrum <= noise_floor(power_spectrum, r2, TUNE_NOISE)] = 0
+        power_spectrum[power_spectrum <= __noise_floor(power_spectrum, r2, TUNE_NOISE)] = 0
         power_spectrum[power_spectrum is 0] = np.nan
 
-        d[rh], delta_d[rh] = determine_lattice_const(power_spectrum, r2, TUNE_THRESHOLD_PERIOD)
-        omega[rh], delta_omega[rh] = analyze_direction(power_spectrum, r2, phi, TUNE_THRESHOLD_DIRECTION)
+        d[rh], sigma_d[rh] = __analyze_lattice_const(power_spectrum, r2,
+                                                     TUNE_THRESHOLD_PERIOD)
+        phi[rh], sigma_phi[rh] = __analyze_direction(power_spectrum, r2, alpha,
+                                                     TUNE_THRESHOLD_DIRECTION)
 
-    return (d, delta_d, omega, delta_omega)
+    return (d, sigma_d, phi, sigma_phi)
 
 
 
@@ -308,6 +313,23 @@ class HRTEMCrystallinity:
     """
     def __init__(self, fft_size=32, step=1, jobs=1, fname=None):
         """
+        Initialized basic attributes.
+
+        Tuning knobs:
+            ``TUNE_THRESHOLD_DIRECTION``: a valid peak along the azimuth must be higher
+                                          than ``TUNE_THRESHOLD_DIRECTION`` times the
+                                          mean intensity
+            ``TUNE_THRESHOLD_PERIOD``: a valid peak along the frequency (radius) must
+                                       be higher than ``TUNE_THRESHOLD_PERIOD`` times
+                                       the mean intensity.
+            ``TUNE_NOISE``: everything below mean() + ``TUNE_NOISE``*std is considered
+                            noise.
+            ``TUNE_MIN_FREQUENCY2``: filter out low frequencies and DC term of FFT.
+                                     ``TUNE_MIN_FREQUENCY2`` corresponds to the index
+                                     (after flipping quadrants) squared.
+            ``TUNE_MAX_FREQUENCY2``: filter out high frequencies of FFT.
+                                     ``TUNE_MAX_FREQUENCY2`` corresponds to the index
+                                     (after flipping quadrants) squared.
         """
 
         self.supported = ','.join(plt.figure().canvas.get_supported_filetypes())
@@ -318,23 +340,6 @@ class HRTEMCrystallinity:
         self.step = step
         self.jobs = jobs
 
-        # tuning knobs
-        # ``TUNE_THRESHOLD_DIRECTION``: a valid peak along the azimuth must be higher
-        #                                than ``TUNE_THRESHOLD_DIRECTION`` times the
-        #                                mean intensity
-        # ``TUNE_THRESHOLD_PERIOD``: a valid peak along the frequency (radius) must be higher
-        #                             than ``TUNE_THRESHOLD_PERIOD`` times the
-        #                             mean intensity
-        # ``TUNE_NOISE``: everything below mean() + ``TUNE_NOISE``*std is considered
-        #                  noise
-        # ``TUNE_MIN_FREQUENCY2``: filter out low frequencies and DC term of FFT.
-        #                           ``TUNE_MIN_FREQUENCY2`` corresponds to the index
-        #                           (after flipping quadrants) squared.
-        #
-        # ``TUNE_MAX_FREQUENCY2``: filter out high frequencies of FFT.
-        #                           ``TUNE_MAX_FREQUENCY2`` corresponds to the index
-        #                           (after flipping quadrants) squared.
-        #
         self.TUNE_THRESHOLD_DIRECTION = 5.0
         self.TUNE_THRESHOLD_PERIOD = 25.0
         self.TUNE_NOISE = 4.0
@@ -353,16 +358,28 @@ class HRTEMCrystallinity:
     def __update_precalc(self):
         """
         Updates/sets all attributes that depend on ``self.fft_size`` and invalidates
-        results by setting ``data_is_valid = False``
-        This is used in ``__init__`` and is triggered by the ``fft_size`` setter
+        results by setting ``data_is_valid = False``.
+        This is used in ``__init__()`` and is triggered by the ``fft_size`` setter.
+
+        Constant data:
+            r2 : nparray
+                the geometrical distance (index) squared of a given entry.
+            alpha : nparray
+                the geometrical azimuth of a given entry with the range
+                -pi <= alpha < 0 shifted to 0 <= alpha < pi.
+            mask : nparray
+                  discarded data at very low frequencies (``TUNE_MIN_FREQUENCY``)
+                  and high frequencies (``TUNE_MAX_FREQUENCY``).
+            han2d : nparray
+                2D Hanning window
         """
         self.fft_size2 = self.fft_size // 2
         self.TUNE_MAX_FREQUENCY2 = self.fft_size2**2
         x, y = np.ogrid[-self.fft_size2 : self.fft_size2,
                         -self.fft_size2 : self.fft_size2]
         self.r2 = x*x + y*y
-        self.phi = np.arctan2(x, y)
-        self.phi[self.phi < 0] += np.pi
+        self.alpha = np.arctan2(x, y)
+        self.alpha[self.alpha < 0] += np.pi
         self.mask = ~((self.r2 > self.TUNE_MIN_FREQUENCY2) & (self.r2 < self.TUNE_MAX_FREQUENCY2))
         han = np.hanning(self.fft_size)
         self.han2d = np.sqrt(np.outer(han, han))
@@ -406,8 +423,15 @@ class HRTEMCrystallinity:
 
     @staticmethod
     def __sub_imageplot(data, this_ax, title, limits):
-        """Plot image ``data`` at axes instance ``this_ax``. Add title ``title`` and
-        use scale given by ``limits``
+        """
+        Plot data as image
+        Parameters
+            data : nparray
+                data to be plotted
+            this_ax : axes instance
+            title : string
+            limits : (float, float)
+                (minimum, maximum) or (None, None) to autoscale
         """
         from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -440,11 +464,13 @@ class HRTEMCrystallinity:
         this_ax.yaxis.set_visible(False)
 
 
-    def plot_data(self, outfname=None, limits_d=(None, None),
-                                       limits_sigma_d=(None, None),
-                                       limits_phi=(0.0, np.pi),
-                                       limits_sigma_phi=(None, None)):
-        """
+    def plot_data(self, outfname=None,
+                  limits_d=(None, None),
+                  limits_sigma_d=(None, None),
+                  limits_phi=(0.0, np.pi),
+                  limits_sigma_phi=(None, None)):
+        """Summary plot of results to ``outfname`` (if provided) or to pop-up
+        window. Individualt limits can be provided.
         """
         if not self.data_is_valid:
             print('No valid data to plot', file=sys.stderr)
@@ -452,10 +478,14 @@ class HRTEMCrystallinity:
 
         _, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
 
-        self.__sub_imageplot(self.d, ax1, r'spacing ($d$)', limits_d)
-        self.__sub_imageplot(self.sigma_d, ax2, r'coherence ($1/\sigma_d$)', limits_sigma_d)
-        self.__sub_imageplot(self.Phi, ax3, r'direction ($\phi$)', limits_phi)
-        self.__sub_imageplot(np.rad2deg(self.sigma_Phi), ax4, r'spread ($\sigma_\phi$)', limits_sigma_phi)
+        self.__sub_imageplot(self.d, ax1,
+                             r'spacing ($d$)', limits_d)
+        self.__sub_imageplot(self.sigma_d, ax2,
+                             r'coherence ($1/\sigma_d$)', limits_sigma_d)
+        self.__sub_imageplot(self.phi, ax3,
+                             r'direction ($\phi$)', limits_phi)
+        self.__sub_imageplot(np.rad2deg(self.sigma_phi), ax4,
+                             r'spread ($\sigma_\phi$)', limits_sigma_phi)
 
         plt.tight_layout()
 
@@ -472,7 +502,7 @@ class HRTEMCrystallinity:
 
 
     def save_data(self, compressed=True):
-        """Save data in ASCII files
+        """Save data in (compressed) ASCII files
         """
         if not self.data_is_valid:
             print('No valid data to save', file=sys.stderr)
@@ -507,14 +537,14 @@ class HRTEMCrystallinity:
                    delimiter='\t', header=header, comments='')
         np.savetxt(base_name + '_coherence' + '.dat' + ext, self.sigma_d,
                    delimiter='\t', header=header, comments='')
-        np.savetxt(base_name + '_direction' + '.dat' + ext, self.Phi,
+        np.savetxt(base_name + '_direction' + '.dat' + ext, self.phi,
                    delimiter='\t', header=header, comments='')
-        np.savetxt(base_name + '_spread' + '.dat' + ext, self.sigma_Phi,
+        np.savetxt(base_name + '_spread' + '.dat' + ext, self.sigma_phi,
                    delimiter='\t', header=header, comments='')
 
 
     def analyze(self):
-        """Analyze local crystallinity of image ``im``
+        """Analyze local crystallinity of ``image_data``
         """
         # x-axis is im.shape[1] -> horizontal (left->right)
         # y-axis is im.shape[0] -> vertical (top->down)
@@ -526,16 +556,20 @@ class HRTEMCrystallinity:
             res = parallel(delayed(inner_loop)(v,
                                                self.image_data,
                                                self.fft_size, self.step,
-                                               (self.r2, self.phi, self.mask, self.han2d),
-                                               (self.TUNE_NOISE, self.TUNE_THRESHOLD_PERIOD, self.TUNE_THRESHOLD_DIRECTION)) for v in range(self.fft_size2,
-                                                                                                                                            self.image_data.shape[0] - self.fft_size2,
-                                                                                                                                            self.step))
-            d, delta_d, omega, delta_omega = zip(*res)
+                                               (self.r2, self.alpha, self.mask, self.han2d),
+                                               (self.TUNE_NOISE,
+                                                self.TUNE_THRESHOLD_PERIOD,
+                                                self.TUNE_THRESHOLD_DIRECTION))
+                           for v in range(self.fft_size2,
+                                          self.image_data.shape[0] - self.fft_size2,
+                                          self.step))
+
+            d, sigma_d, phi, sigma_phi = zip(*res)
 
         self.d = np.array(d).reshape(Nv, Nh)
-        self.sigma_d = np.array(delta_d).reshape(Nv, Nh)
-        self.Phi = np.array(omega).reshape(Nv, Nh)
-        self.sigma_Phi = np.array(delta_omega).reshape(Nv, Nh)
+        self.sigma_d = np.array(sigma_d).reshape(Nv, Nh)
+        self.phi = np.array(phi).reshape(Nv, Nh)
+        self.sigma_phi = np.array(sigma_phi).reshape(Nv, Nh)
         self.data_is_valid = True
 
 
