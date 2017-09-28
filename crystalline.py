@@ -233,7 +233,7 @@ def __analyze_lattice_const(power_spectrum, r2, TUNE_THRESHOLD_PERIOD):
 
 def inner_loop(v, img, fft_size, step, const, tune):
     """
-    Analyzes horizontal line ``v`` in image ``im``
+    Analyzes horizontal line ``v`` in image ``img``
 
     Parameters:
         v : int
@@ -249,7 +249,7 @@ def inner_loop(v, img, fft_size, step, const, tune):
             r2 : np.array
                 squared distances of each pixel in the 2D FFT relative to the one
                 that represents the zero frequency
-            aplha : np.array
+            alpha : np.array
                 angle of each pixel in 2D FFT relative to the pixel that
                 represents the zero frequency
             mask : np.array
