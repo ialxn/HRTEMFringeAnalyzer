@@ -456,7 +456,7 @@ class HRTEMCrystallinity:
                 cbar.set_label('$d$  [pixel]')
             if title == r'coherence ($1/\sigma_d$)':
                 cbar.set_label(r'$1/\sigma_d$  [A.U.]')
-            if title == r'spread ($\sigma_\phi$)':
+            if title == r'spread ($np.array(d).reshape(Nv, Nh)\sigma_\phi$)':
                 cbar.set_label(r'$\sigma_d$  [$^\circ$]')
 
         this_ax.set_title(title)
