@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jun  2 08:32:42 2017
+Created on Mon Sep 25 12:05:26 2017
 
-@author: Ivo Alxneit (ivo.alxneit@psi.ch)
+@author: alxneit
 """
+import sys
 import warnings
-
-from argparse import ArgumentParser
 
 import numpy as np
 from numpy.fft import fft2, fftshift
+
+import matplotlib.pyplot as plt
 
 from scipy.misc import imread
 from scipy.optimize import curve_fit, OptimizeWarning
@@ -18,23 +19,6 @@ from scipy.optimize import curve_fit, OptimizeWarning
 from numba import jit
 from joblib import Parallel, delayed
 
-import matplotlib.pyplot as plt
-
-__version__ = ''
-
-# tuning knobs
-# ``TUNE_THRESHOLD_DIRECTION``: a valid peak along the azimuth must be higher
-#                                than ``TUNE_THRESHOLD_DIRECTION`` times the
-#                                mean intensity
-# ``TUNE_THRESHOLD_PERIOD``: a valid peak along the frequency (radius) must be higher
-#                             than ``TUNE_THRESHOLD_PERIOD`` times the
-#                             mean intensity
-# ``TUNE_NOISE``: everything below mean() + ``TUNE_NOISE``*std is considered
-#                  noise
-TUNE_THRESHOLD_DIRECTION = 5.0
-TUNE_THRESHOLD_PERIOD = 25.0
-TUNE_NOISE = 4.0
-#
 @jit(nopython=True, nogil=True, cache=True)
 def gaussian(x, *p):
     """Calculate Gaussian and offset
@@ -104,7 +88,7 @@ def find_peak(x, y):
     return max_value, delta_value
 
 
-def noise_floor(window, radius_squared):
+def noise_floor(window, radius_squared, TUNE_NOISE):
     """Determine aproximate noise floor of FFT ``window``
 
     Parameters:
@@ -130,7 +114,7 @@ def noise_floor(window, radius_squared):
     return mean + TUNE_NOISE * error
 
 
-def analyze_direction(window, radius_squared, phi):
+def analyze_direction(window, radius_squared, phi, TUNE_THRESHOLD_DIRECTION):
     """Find peak in FFT window ``window`` and return its direction
     and angular spread
 
@@ -196,7 +180,7 @@ def analyze_direction(window, radius_squared, phi):
     return omega, delta_omega
 
 
-def determine_lattice_const(power_spectrum, radius2):
+def determine_lattice_const(power_spectrum, radius2, TUNE_THRESHOLD_PERIOD):
     """Determine lattice constant and coherence length from FFT. All calculations
     in pixel numbers.
 
@@ -244,7 +228,7 @@ def determine_lattice_const(power_spectrum, radius2):
     return d, delta_d
 
 
-def inner_loop(v, img, fft_size, step, const):
+def inner_loop(v, img, fft_size, step, const, tune):
     """
     Analyzes horizontal line ``v`` in image ``im``
 
@@ -283,6 +267,7 @@ def inner_loop(v, img, fft_size, step, const):
             Spread of direction vector
     """
     r2, phi, mask, han2d = const
+    TUNE_NOISE, TUNE_THRESHOLD_PERIOD, TUNE_THRESHOLD_DIRECTION = tune
     fft_size2 = fft_size // 2
     Nh = int(np.ceil((img.shape[1] - fft_size) / step))
     d = np.zeros([Nh])
@@ -305,127 +290,262 @@ def inner_loop(v, img, fft_size, step, const):
         # set very low and very high frequencies to zero (mask)
         # set to zero all frequencies with power smaller than noise floor
         power_spectrum[mask] = 0
-        power_spectrum[power_spectrum <= noise_floor(power_spectrum, r2)] = 0
+        power_spectrum[power_spectrum <= noise_floor(power_spectrum, r2, TUNE_NOISE)] = 0
         power_spectrum[power_spectrum is 0] = np.nan
 
-        d[rh], delta_d[rh] = determine_lattice_const(power_spectrum, r2)
-        omega[rh], delta_omega[rh] = analyze_direction(power_spectrum, r2, phi)
+        d[rh], delta_d[rh] = determine_lattice_const(power_spectrum, r2, TUNE_THRESHOLD_PERIOD)
+        omega[rh], delta_omega[rh] = analyze_direction(power_spectrum, r2, phi, TUNE_THRESHOLD_DIRECTION)
 
     return (d, delta_d, omega, delta_omega)
 
 
-def analyze(img, fft_size, step, n_jobs):
-    """Analyze local crystallinity of image ``im``
 
-    Parameters:
-        img : np array
-            Image to be analyzed.
-        fft_size : int
-            Size of window to be analyzed (must be 2^N)
-        step : int
-            Window is translated by ``step`` (horizontal and vertical)
-        n_jobs : int
-            Number of parallel running jobs
 
-    Returns
-        d : np array
-            Period
-        delta_d : np array
-            Coherence length (length of periodic structure) as A.U.
-        omega : np array
-            Direction of lattice (direction) vector of periodic structure
-        delta_omega : np array
-            Spread of direction vector
+
+__version__ = ''
+class HRTEMCrystallinity:
     """
-    def pre_calc(fft_size2):
-        """Prepare arrays that are needed many times to deal with the 2D Fourier
-        transforms
-        x, y are indices of the frequency shifted transforms, i.e. the
-        zero frequency (DC term) is now at [0,0]
+    """
+    def __init__(self, fft_size=32, step=1, jobs=1, fname=None):
         """
-        x, y = np.ogrid[-fft_size2 : fft_size2,
-                        -fft_size2 : fft_size2]
-        # r2: the geometrical distance (index) squared of a given entry in the FFT
-        r2 = x*x + y*y
-        # phi: the geometrical azimuth of a given entry in the FFT with the range
-        #      -pi .. phi .. 0 mapped to 0 .. phi .. pi
-        phi = np.arctan2(x, y)
-        phi[phi < 0] += np.pi
+        """
 
-        # mask: discard very low frequencies (index 1,2,3,4) and high frequencies
-        # (indices above _tune_max_frequency)
-        mask = ~((r2 > TUNE_MIN_FREQUENCY2) & (r2 < TUNE_MAX_FREQUENCY2))
-        # 2D hanning window
-        han = np.hanning(fft_size)
-        han2d = np.sqrt(np.outer(han, han))
+        self.supported = ','.join(plt.figure().canvas.get_supported_filetypes())
+        plt.close()
 
-        return (r2, phi, mask, han2d)
+        self.fft_size = fft_size
+        self.fft_size2 = fft_size // 2
+        self.step = step
+        self.jobs = jobs
+
+        # tuning knobs
+        # ``TUNE_THRESHOLD_DIRECTION``: a valid peak along the azimuth must be higher
+        #                                than ``TUNE_THRESHOLD_DIRECTION`` times the
+        #                                mean intensity
+        # ``TUNE_THRESHOLD_PERIOD``: a valid peak along the frequency (radius) must be higher
+        #                             than ``TUNE_THRESHOLD_PERIOD`` times the
+        #                             mean intensity
+        # ``TUNE_NOISE``: everything below mean() + ``TUNE_NOISE``*std is considered
+        #                  noise
+        # ``TUNE_MIN_FREQUENCY2``: filter out low frequencies and DC term of FFT.
+        #                           ``TUNE_MIN_FREQUENCY2`` corresponds to the index
+        #                           (after flipping quadrants) squared.
+        #
+        # ``TUNE_MAX_FREQUENCY2``: filter out high frequencies of FFT.
+        #                           ``TUNE_MAX_FREQUENCY2`` corresponds to the index
+        #                           (after flipping quadrants) squared.
+        #
+        self.TUNE_THRESHOLD_DIRECTION = 5.0
+        self.TUNE_THRESHOLD_PERIOD = 25.0
+        self.TUNE_NOISE = 4.0
+        self.TUNE_MIN_FREQUENCY2 = 4**2 # seems a good value
+        self.TUNE_MAX_FREQUENCY2 = self.fft_size2**2
+
+        self.__update_precalc()
+
+        try:
+            self.image_data = imread(fname, mode='I')
+            self.image_fname = fname
+        except:
+            raise ValueError("Could not read file {}".format(fname))
 
 
-    fft_size2 = fft_size // 2
-    # x-axis is im.shape[1] -> horizontal (left->right)
-    # y-axis is im.shape[0] -> vertical (top->down)
-    # indices v,h for center of roi in image
-    Nh = int(np.ceil((img.shape[1] - fft_size) / step))
-    Nv = int(np.ceil((img.shape[0] - fft_size) / step))
-    const = pre_calc(fft_size2)
-
-    with Parallel(n_jobs=n_jobs) as parallel:
-        res = parallel(delayed(inner_loop)(v,
-                                           img,
-                                           fft_size, step,
-                                           const) \
-                                           for v in range(fft_size2,
-                                                          img.shape[0] - fft_size2,
-                                                          step))
-        d, delta_d, omega, delta_omega = zip(*res)
-
-    return (np.array(d).reshape(Nv, Nh),
-            np.array(delta_d).reshape(Nv, Nh),
-            np.array(omega).reshape(Nv, Nh),
-            np.array(delta_omega).reshape(Nv, Nh))
+    def __update_precalc(self):
+        """
+        Updates/sets all attributes that depend on ``self.fft_size`` and invalidates
+        results by setting ``data_is_valid = False``
+        This is used in ``__init__`` and is triggered by the ``fft_size`` setter
+        """
+        self.fft_size2 = self.fft_size // 2
+        self.TUNE_MAX_FREQUENCY2 = self.fft_size2**2
+        x, y = np.ogrid[-self.fft_size2 : self.fft_size2,
+                        -self.fft_size2 : self.fft_size2]
+        self.r2 = x*x + y*y
+        self.phi = np.arctan2(x, y)
+        self.phi[self.phi < 0] += np.pi
+        self.mask = ~((self.r2 > self.TUNE_MIN_FREQUENCY2) & (self.r2 < self.TUNE_MAX_FREQUENCY2))
+        han = np.hanning(self.fft_size)
+        self.han2d = np.sqrt(np.outer(han, han))
+        self.data_is_valid = False
 
 
-def sub_imageplot(data, this_ax, title, limits):
-    """Plot image ``data`` at axes instance ``this_ax``. Add title ``title`` and
-    use scale given by ``limits``
-    """
-    from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    img = this_ax.imshow(data, cmap='jet', vmin=limits[0], vmax=limits[1], origin='upper')
-    # Create divider for existing axes instance
-    divider = make_axes_locatable(this_ax)
-    # Append axes to the right of ax, with 20% width of ax
-    cax = divider.append_axes("right", size="20%", pad=0.05)
-    # Create colorbar in the appended axes
-    # Tick locations can be set with the kwarg `ticks`
-    # and the format of the ticklabels with kwarg `format`
-    if title == r'direction ($\phi$)':
-        ticks = np.linspace(0, np.pi, num=9, endpoint=True)
-        labels = ['W', '', 'NW', '', 'N', '', 'NE', '', 'E']
-        cbar = plt.colorbar(img, cax=cax, ticks=ticks)
-        cbar.ax.set_yticklabels(labels)
-        cbar.ax.invert_yaxis()  # W at top, E at bottom
-        cbar.set_label('direction  [-]')
-    else:
-        cbar = plt.colorbar(img, cax=cax)
-        if title == r'spacing ($d$)':
-            cbar.set_label('$d$  [pixel]')
-        if title == r'coherence ($1/\sigma_d$)':
-            cbar.set_label(r'$1/\sigma_d$  [A.U.]')
-        if title == r'spread ($\sigma_\phi$)':
-            cbar.set_label(r'$\sigma_d$  [$^\circ$]')
-    this_ax.set_title(title)
-    this_ax.xaxis.set_visible(False)
-    this_ax.yaxis.set_visible(False)
+    @property
+    def fft_size(self):
+        return self.__fft_size
+
+    @fft_size.setter
+    def fft_size(self, fft_size):
+        self.__fft_size = fft_size
+        try:
+            self.__update_precalc()
+        except AttributeError:
+            pass
+
+    @property
+    def step(self):
+        return self.__step
+
+    @step.setter
+    def step(self, step):
+        self.__step = step
+
+    @property
+    def image_fname(self):
+        return self.__image_fname
+
+    @image_fname.setter
+    def image_fname(self, fname):
+        try:
+            self.image_data = imread(fname, mode='I')
+            self.__image_fname = fname
+        except:
+            raise ValueError("Could not read file {}".format(fname))
+
+    @staticmethod
+    def __sub_imageplot(data, this_ax, title, limits):
+        """Plot image ``data`` at axes instance ``this_ax``. Add title ``title`` and
+        use scale given by ``limits``
+        """
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+        img = this_ax.imshow(data, cmap='jet', vmin=limits[0], vmax=limits[1], origin='upper')
+        # Create divider for existing axes instance
+        divider = make_axes_locatable(this_ax)
+        # Append axes to the right of ax, with 20% width of ax
+        cax = divider.append_axes("right", size="20%", pad=0.05)
+        # Create colorbar in the appended axes
+        # Tick locations can be set with the kwarg `ticks`
+        # and the format of the ticklabels with kwarg `format`
+        if title == r'direction ($\phi$)':
+            ticks = np.linspace(0, np.pi, num=9, endpoint=True)
+            labels = ['W', '', 'NW', '', 'N', '', 'NE', '', 'E']
+            cbar = plt.colorbar(img, cax=cax, ticks=ticks)
+            cbar.ax.set_yticklabels(labels)
+            cbar.ax.invert_yaxis()  # W at top, E at bottom
+            cbar.set_label('direction  [-]')
+        else:
+            cbar = plt.colorbar(img, cax=cax)
+            if title == r'spacing ($d$)':
+                cbar.set_label('$d$  [pixel]')
+            if title == r'coherence ($1/\sigma_d$)':
+                cbar.set_label(r'$1/\sigma_d$  [A.U.]')
+            if title == r'spread ($np.array(d).reshape(Nv, Nh)\sigma_\phi$)':
+                cbar.set_label(r'$\sigma_d$  [$^\circ$]')
+
+        this_ax.set_title(title)
+        this_ax.xaxis.set_visible(False)
+        this_ax.yaxis.set_visible(False)
+
+
+    def plot_data(self, outfname=None):
+        """
+        """
+        if not self.data_is_valid:
+            print('No valid data to plot', file=sys.stderr)
+            return
+
+
+        _, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+
+        self.__sub_imageplot(self.d, ax1, r'spacing ($d$)', (None, None))
+        self.__sub_imageplot(self.sigma_d, ax2, r'coherence ($1/\sigma_d$)', (None, None))
+        self.__sub_imageplot(self.Phi, ax3, r'direction ($\phi$)', (0.0, np.pi))
+        self.__sub_imageplot(np.rad2deg(self.sigma_Phi), ax4, r'spread ($\sigma_\phi$)', (None, None))
+
+        plt.tight_layout()
+
+        if outfname is None:
+            plt.show()
+        else:
+            try:
+                plt.savefig(outfname)
+            except ValueError:
+                print('Cannot save figure ({})'.format(outfname))
+                print('Supported formats: {}'.format(self.supported))
+                plt.show()
+
+
+
+    def save_data(self, compressed=True):
+        """Save data in ASCII files
+        """
+        if not self.data_is_valid:
+            print('No valid data to save', file=sys.stderr)
+            return
+
+        if compressed:
+            ext = '.gz'
+        else:
+            ext = ''
+        header = '#\n' \
+        + '# crist.py version {}\n'.format(__version__) \
+        + '# Tuning knobs:\n' \
+        + '#        TUNE_MIN_FREQUENCY2: {}\n'.format(self.TUNE_MIN_FREQUENCY2) \
+        + '#        TUNE_MAX_FREQUENCY2: {}\n'.format(self.TUNE_MAX_FREQUENCY2) \
+        + '#                 TUNE_NOISE: {}\n'.format(self.TUNE_NOISE) \
+        + '#   TUNE_THRESHOLD_DIRECTION: {}\n'.format(self.TUNE_THRESHOLD_DIRECTION) \
+        + '#      TUNE_THRESHOLD_PERIOD: {}\n'.format(self.TUNE_THRESHOLD_PERIOD) \
+        + '#\n' \
+        + '# Results for {} ({}x{} [vxh])\n'.format(self.image_fname,
+                                                    self.image_data.shape[0],
+                                                    self.image_data.shape[1]) \
+        + '# FFT window: {}x{}\n'.format(self.fft_size, self.fft_size) \
+        + '#       step: {}\n'.format(self.step) \
+        + '#\n' \
+        + '# To convert from local indices to indices of original image\n' \
+        + '#\n' \
+        + '#     image_idx = FFT_window/2 + local_idx * step\n' \
+        + '# both, for horizontal and vertical index\n' \
+        + '#'
+        base_name, _ = self.image_fname.rsplit(sep='/')[-1].rsplit(sep='.')
+        np.savetxt(base_name + '_spacing' + '.dat' + ext, self.d,
+                   delimiter='\t', header=header, comments='')
+        np.savetxt(base_name + '_coherence' + '.dat' + ext, self.sigma_d,
+                   delimiter='\t', header=header, comments='')
+        np.savetxt(base_name + '_direction' + '.dat' + ext, self.Phi,
+                   delimiter='\t', header=header, comments='')
+        np.savetxt(base_name + '_spread' + '.dat' + ext, self.sigma_Phi,
+                   delimiter='\t', header=header, comments='')
+
+
+    def analyze(self):
+        """Analyze local crystallinity of image ``im``
+        """
+        # x-axis is im.shape[1] -> horizontal (left->right)
+        # y-axis is im.shape[0] -> vertical (top->down)
+        # indices v,h for center of roi in image
+        Nh = int(np.ceil((self.image_data.shape[1] - self.fft_size) / self.step))
+        Nv = int(np.ceil((self.image_data.shape[0] - self.fft_size) / self.step))
+
+        with Parallel(n_jobs=self.jobs) as parallel:
+            res = parallel(delayed(inner_loop)(v,
+                                               self.image_data,
+                                               self.fft_size, self.step,
+                                               (self.r2, self.phi, self.mask, self.han2d),
+                                               (self.TUNE_NOISE, self.TUNE_THRESHOLD_PERIOD, self.TUNE_THRESHOLD_DIRECTION)) for v in range(self.fft_size2,
+                                                                                                                                            self.image_data.shape[0] - self.fft_size2,
+                                                                                                                                            self.step))
+            d, delta_d, omega, delta_omega = zip(*res)
+
+        self.d = np.array(d).reshape(Nv, Nh)
+        self.sigma_d = np.array(delta_d).reshape(Nv, Nh)
+        self.Phi = np.array(omega).reshape(Nv, Nh)
+        self.sigma_Phi = np.array(delta_omega).reshape(Nv, Nh)
+        self.data_is_valid = True
+
 
 
 def main():
     """main function
     """
+    from argparse import ArgumentParser
     def parse_command_line():
         """Parse command line arguments and return them
         """
+        supported = ','.join(plt.figure().canvas.get_supported_filetypes())
+        plt.close()
+
         parser = ArgumentParser(description='Analyze local cristallinity of data')
         parser.add_argument('-f', '--file', metavar='FILE',
                             type=str, required=True,
@@ -449,86 +569,19 @@ def main():
         return parser.parse_args()
 
 
-    def save_data(args, shape, data):
-        """Save data in ASCII files
-        """
-        d_value, coherence, direction, spread = data
-        header = '#\n' \
-        + '# crist.py version {}\n'.format(__version__) \
-        + '# Tuning knobs:\n' \
-        + '#        TUNE_MIN_FREQUENCY2: {}\n'.format(TUNE_MIN_FREQUENCY2) \
-        + '#        TUNE_MAX_FREQUENCY2: {}\n'.format(TUNE_MAX_FREQUENCY2) \
-        + '#                 TUNE_NOISE: {}\n'.format(TUNE_NOISE) \
-        + '#   TUNE_THRESHOLD_DIRECTION: {}\n'.format(TUNE_THRESHOLD_DIRECTION) \
-        + '#      TUNE_THRESHOLD_PERIOD: {}\n'.format(TUNE_THRESHOLD_PERIOD) \
-        + '#\n' \
-        + '# Results for {} ({}x{} [vxh])\n'.format(args.file, shape[0], shape[1]) \
-        + '# FFT window: {}x{}\n'.format(args.FFT_size, args.FFT_size) \
-        + '#       step: {}\n'.format(args.step) \
-        + '#\n' \
-        + '# To convert from local indices to indices of original image\n' \
-        + '#\n' \
-        + '#     image_idx = FFT_window/2 + local_idx * step\n' \
-        + '# both, for horizontal and vertical index\n' \
-        + '#'
-        base_name, _ = args.file.rsplit(sep='/')[-1].rsplit(sep='.')
-        np.savetxt(base_name + '_spacing' + '.dat.gz', d_value,
-                   delimiter='\t', header=header, comments='')
-        np.savetxt(base_name + '_coherence' + '.dat.gz', coherence,
-                   delimiter='\t', header=header, comments='')
-        np.savetxt(base_name + '_direction' + '.dat.gz', direction,
-                   delimiter='\t', header=header, comments='')
-        np.savetxt(base_name + '_spread' + '.dat.gz', spread,
-                   delimiter='\t', header=header, comments='')
-
-
-    global TUNE_MIN_FREQUENCY2
-    global TUNE_MAX_FREQUENCY2
-
-    supported = ','.join(plt.figure().canvas.get_supported_filetypes())
-    plt.close()
-
     args = parse_command_line()
-
-    # ``TUNE_MIN_FREQUENCY2``: filter out low frequencies and DC term of FFT.
-    #                           ``TUNE_MIN_FREQUENCY2`` corresponds to the index
-    #                           (after flipping quadrants) squared.
-    #
-    # ``TUNE_MAX_FREQUENCY2``: filter out high frequencies of FFT.
-    #                           ``TUNE_MAX_FREQUENCY2`` corresponds to the index
-    #                           (after flipping quadrants) squared.
-    #
-    TUNE_MIN_FREQUENCY2 = 4 * 4 # seems a good value
-    TUNE_MAX_FREQUENCY2 = (args.FFT_size // 2)**2
-
-    data = imread(args.file, mode='I')
-    d_value, coherence, direction, spread = analyze(data,
-                                                    args.FFT_size,
-                                                    args.step,
-                                                    args.jobs)
-
-    if args.save:
-        save_data(args, data.shape, (d_value, coherence, direction, spread))
-
-    _, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-
-    sub_imageplot(d_value, ax1, r'spacing ($d$)', (None, None))
-    sub_imageplot(coherence, ax2, r'coherence ($1/\sigma_d$)', (None, None))
-    sub_imageplot(direction, ax3, r'direction ($\phi$)', (0.0, np.pi))
-    sub_imageplot(np.rad2deg(spread), ax4, r'spread ($\sigma_\phi$)', (None, None))
-
-    plt.tight_layout()
-
-    if args.output is None:
-        plt.show()
-    else:
-        try:
-            plt.savefig(args.output)
-        except ValueError:
-            print('Cannot save figure ({})'.format(args.output))
-            print('Supported formats: {}'.format(supported))
-            plt.show()
-
+    H = HRTEMCrystallinity(fft_size=args.FFT_size, step=args.step, jobs=args.jobs, fname=args.file)
+    print(H.fft_size, H.step)
+    H.analyze()
+    H.plot_data('test32.pdf')
+    H.save_data(compressed=False)
+    H.fft_size = 128
+    H.plot_data('invalid.pdf')
+    H.step = 30
+    print(H.fft_size, H.step)
+    H.analyze()
+    H.save_data()
+    H.plot_data('test128.pdf')
 
 if __name__ == '__main__':
     main()
