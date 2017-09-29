@@ -518,9 +518,9 @@ class HRTEMCrystallinity:
 
     @staticmethod
     def __finish_overlay(ax, cax, label, title):
-            cbar = plt.colorbar(cax, shrink=0.7)
-            cbar.set_label('$d$  [pixel]')
-            ax.set_title(r'spacing ($d$)')
+        cbar = plt.colorbar(cax, shrink=0.7)
+        cbar.set_label(label)
+        ax.set_title(title)
 
     def plot_overlayed(self, datum, outfname=None, limits=(None, None)):
         """Plots selected result as overlay on image
