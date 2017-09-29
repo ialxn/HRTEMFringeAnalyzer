@@ -311,6 +311,32 @@ __version__ = ''
 class HRTEMCrystallinity:
     """
     """
+    class Constants:
+        """Constants that depend on ``fft_size`` (and value of ``MIN_FREQUENCY`` only
+            r2 : nparray
+                the geometrical distance (index) squared of a given entry.
+            alpha : nparray
+                the geometrical azimuth of a given entry with the range
+                -pi <= alpha < 0 shifted to 0 <= alpha < pi.
+            mask : nparray
+                  discarded data at very low frequencies (``TUNE_MIN_FREQUENCY``)
+                  and high frequencies (``TUNE_MAX_FREQUENCY``).
+            han2d : nparray
+                2D Hanning window
+        """
+        def __init__(self, fft_size, MIN_FREQUENCY2):
+            fft_size2 = fft_size // 2
+            MAX_FREQUENCY2 = fft_size2**2
+            x, y = np.ogrid[-fft_size2 : fft_size2,
+                            -fft_size2 : fft_size2]
+            self.r2 = x*x + y*y
+            self.alpha = np.arctan2(x, y)
+            self.alpha[self.alpha < 0] += np.pi
+            self.mask = ~((self.r2 > MIN_FREQUENCY2) & (self.r2 < MAX_FREQUENCY2))
+            han = np.hanning(fft_size)
+            self.han2d = np.sqrt(np.outer(han, han))
+
+
     class TuningParameters:
         """Contains tuning parameters
             ``THRESHOLD_DIRECTION``: a valid peak along the azimuth must be higher
@@ -337,6 +363,9 @@ class HRTEMCrystallinity:
 
 
     def __init__(self, fft_size=32, step=1, jobs=1, fname=None):
+        """
+        Initialized basic attributes.
+        """
         self.supported = ','.join(plt.figure().canvas.get_supported_filetypes())
         plt.close()
 
@@ -346,7 +375,6 @@ class HRTEMCrystallinity:
         self.jobs = jobs
 
         self.tuned = self.TuningParameters(self.fft_size2)
-
         self.__update_precalc()
 
         try:
@@ -358,32 +386,20 @@ class HRTEMCrystallinity:
 
     def __update_precalc(self):
         """
-        Updates/sets all attributes that depend on ``self.fft_size`` and invalidates
-        results by setting ``results_are_valid = False``.
+        Updates/sets all attributes that depend on ``self.fft_size``. This includes
+        all attributes of ``Constants``. Then invalidates results by setting
+        ``results_are_valid = False``.
         This is used in ``__init__()`` and is triggered by the ``fft_size`` setter.
-
-        Constant data:
-            r2 : nparray
-                the geometrical distance (index) squared of a given entry.
-            alpha : nparray
-                the geometrical azimuth of a given entry with the range
-                -pi <= alpha < 0 shifted to 0 <= alpha < pi.
-            mask : nparray
-                  discarded data at very low frequencies (``TUNE_MIN_FREQUENCY``)
-                  and high frequencies (``TUNE_MAX_FREQUENCY``).
-            han2d : nparray
-                2D Hanning window
         """
         self.fft_size2 = self.fft_size // 2
         self.tuned.MAX_FREQUENCY2 = self.fft_size2**2
-        x, y = np.ogrid[-self.fft_size2 : self.fft_size2,
-                        -self.fft_size2 : self.fft_size2]
-        self.r2 = x*x + y*y
-        self.alpha = np.arctan2(x, y)
-        self.alpha[self.alpha < 0] += np.pi
-        self.mask = ~((self.r2 > self.tuned.MIN_FREQUENCY2) & (self.r2 < self.tuned.MAX_FREQUENCY2))
-        han = np.hanning(self.fft_size)
-        self.han2d = np.sqrt(np.outer(han, han))
+
+        try:
+            del self.constant
+        except:
+            pass
+
+        self.constant = self.Constants(self.fft_size, self.tuned.MIN_FREQUENCY2)
         self.results_are_valid = False
 
 
@@ -556,7 +572,10 @@ class HRTEMCrystallinity:
             res = parallel(delayed(inner_loop)(v,
                                                self.image_data,
                                                self.fft_size, self.step,
-                                               (self.r2, self.alpha, self.mask, self.han2d),
+                                               (self.constant.r2,
+                                                self.constant.alpha,
+                                                self.constant.mask,
+                                                self.constant.han2d),
                                                (self.tuned.NOISE,
                                                 self.tuned.THRESHOLD_PERIOD,
                                                 self.tuned.THRESHOLD_DIRECTION))
