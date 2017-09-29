@@ -5,6 +5,7 @@ Created on Mon Sep 25 12:05:26 2017
 
 @author: alxneit
 """
+# pylint: disable=C0103
 import sys
 import warnings
 
