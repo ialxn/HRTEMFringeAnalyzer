@@ -609,17 +609,28 @@ def main():
 
     args = parse_command_line()
     H = HRTEMCrystallinity(fft_size=args.FFT_size, step=args.step, jobs=args.jobs, fname=args.file)
-    print(H.fft_size, H.step)
+    print('start {} {}'.format(H.fft_size, H.step))
+    print('analyze')
     H.analyze()
+    print('plot')
     H.plot_data('test32.pdf')
+    print('save')
     H.save_data(compressed=False)
+    print('reset FFT_SIZE {} {}'.format(H.fft_size, H.step))
     H.fft_size = 128
+    print('reset FFT_SIZE {} {}'.format(H.fft_size, H.step))
+    print('plot')
     H.plot_data('invalid.pdf')
     H.step = 30
+    print('reset step {} {}'.format(H.fft_size, H.step))
     print(H.fft_size, H.step)
+    print('analyze')
     H.analyze()
+    print('save')
     H.save_data()
+    print('plot')
     H.plot_data('test128.pdf')
+    print('plot')
     H.plot_data('test128_b.pdf', limits_d=(15.0, 20.0))
 
 if __name__ == '__main__':
