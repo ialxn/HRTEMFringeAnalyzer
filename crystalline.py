@@ -403,7 +403,6 @@ class HRTEMCrystallinity:
         self.results_are_valid = False
 
 
-
     @property
     def fft_size(self):
         return self.__fft_size
@@ -437,6 +436,7 @@ class HRTEMCrystallinity:
             self.results_are_valid = False
         except:
             raise ValueError("Could not read file {}".format(fname))
+
 
     @staticmethod
     def __sub_imageplot(data, this_ax, title, limits):
@@ -481,11 +481,11 @@ class HRTEMCrystallinity:
         this_ax.yaxis.set_visible(False)
 
 
-    def plot_data(self, outfname=None,
-                  limits_d=(None, None),
-                  limits_sigma_d=(None, None),
-                  limits_phi=(0.0, np.pi),
-                  limits_sigma_phi=(None, None)):
+    def summarize_data(self, outfname=None,
+                       limits_d=(None, None),
+                       limits_sigma_d=(None, None),
+                       limits_phi=(0.0, np.pi),
+                       limits_sigma_phi=(None, None)):
         """Summary plot of results to ``outfname`` (if provided) or to pop-up
         window. Individualt limits can be provided.
         """
@@ -516,6 +516,59 @@ class HRTEMCrystallinity:
                 print('Supported formats: {}'.format(self.supported))
                 plt.show()
 
+    @staticmethod
+    def __finish_overlay(ax, cax, label, title):
+            cbar = plt.colorbar(cax, shrink=0.7)
+            cbar.set_label('$d$  [pixel]')
+            ax.set_title(r'spacing ($d$)')
+
+    def plot_overlayed(self, datum, outfname=None, limits=(None, None)):
+        """Plots selected result as overlay on image
+
+        Parameters
+            datum : attribute
+                Result to be used as overlay
+            outfname : string
+                Filename of output file or None (plot to pop-up window)
+            limits : (float, float)
+                z-limits for datum. (minimum, maximum) or (None, None) for autoscale
+        """
+        if not self.results_are_valid:
+            print('No valid data to plot', file=sys.stderr)
+            return
+
+        ax = plt.subplot(111)
+        ax.imshow(self.image_data, extent=None, aspect='equal', cmap='gray')
+        x = np.arange(self.fft_size2, self.image_data.shape[1] - self.fft_size2, self.step)
+        y = np.arange(self.fft_size2, self.image_data.shape[0] - self.fft_size2, self.step)
+        cax = ax.contourf(x, y, datum, alpha=0.5, cmap='jet', vmin=limits[0], vmax=limits[1])
+        if datum is self.d:
+            self.__finish_overlay(ax, cax, '$d$  [pixel]', r'spacing ($d$)')
+        if datum is self.sigma_d:
+            self.__finish_overlay(ax, cax, r'$1/\sigma_d$  [A.U.]', r'coherence ($1/\sigma_d$)')
+        if datum is self.phi:
+            ticks = np.linspace(0, np.pi, num=9, endpoint=True)
+            labels = ['W', '', 'NW', '', 'N', '', 'NE', '', 'E']
+            cbar = plt.colorbar(cax, ticks=ticks, shrink=0.7)
+            cbar.ax.set_yticklabels(labels)
+            cbar.ax.invert_yaxis()  # W at top, E at bottom
+            cbar.set_label('direction  [-]')
+            ax.set_title(r'direction ($\phi$)')
+        if datum is self.sigma_phi:
+            self.__finish_overlay(ax, cax, r'$\sigma_\phi$  [A.U.]', r'$\sigma_d$  [$^\circ$]')
+
+        ax.xaxis.set_visible(False)
+        ax.yaxis.set_visible(False)
+
+        if outfname is None:
+            plt.show()
+        else:
+            try:
+                plt.savefig(outfname)
+            except ValueError:
+                print('Cannot save figure ({})'.format(outfname))
+                print('Supported formats: {}'.format(self.supported))
+                plt.show()
 
     def save_data(self, compressed=True):
         """Save data in (compressed) ASCII files
@@ -631,15 +684,15 @@ def main():
     print('start {} {}'.format(H.fft_size, H.step))
     print('analyze')
     H.analyze()
-    print('plot')
-    H.plot_data('test32.pdf')
+    print('plot summary')
+    H.summarize_data('test32.pdf')
     print('save')
     H.save_data(compressed=False)
     print('reset FFT_SIZE {} {}'.format(H.fft_size, H.step))
     H.fft_size = 128
     print('reset FFT_SIZE {} {}'.format(H.fft_size, H.step))
-    print('plot')
-    H.plot_data('invalid.pdf')
+    print('plot summary')
+    H.summarize_data('invalid.pdf')
     H.step = 30
     print('reset step {} {}'.format(H.fft_size, H.step))
     print(H.fft_size, H.step)
@@ -647,10 +700,13 @@ def main():
     H.analyze()
     print('save')
     H.save_data()
-    print('plot')
-    H.plot_data('test128.pdf')
-    print('plot')
-    H.plot_data('test128_b.pdf', limits_d=(15.0, 20.0))
+    print('plot summary')
+    H.summarize_data('test128.pdf')
+    print('plot summary')
+    H.summarize_data('test128_b.pdf', limits_d=(15.0, 20.0))
+    for datum in (H.d, H.sigma_d, H.phi, H.sigma_phi):
+        print('plot overlay')
+        H.plot_overlayed(datum)
 
 if __name__ == '__main__':
     main()
