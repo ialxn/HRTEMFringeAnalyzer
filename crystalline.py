@@ -311,57 +311,8 @@ __version__ = ''
 class HRTEMCrystallinity:
     """
     """
-    def __init__(self, fft_size=32, step=1, jobs=1, fname=None):
-        """
-        Initialized basic attributes.
-
-        Tuning knobs:
-            ``TUNE_THRESHOLD_DIRECTION``: a valid peak along the azimuth must be higher
-                                          than ``TUNE_THRESHOLD_DIRECTION`` times the
-                                          mean intensity
-            ``TUNE_THRESHOLD_PERIOD``: a valid peak along the frequency (radius) must
-                                       be higher than ``TUNE_THRESHOLD_PERIOD`` times
-                                       the mean intensity.
-            ``TUNE_NOISE``: everything below mean() + ``TUNE_NOISE``*std is considered
-                            noise.
-            ``TUNE_MIN_FREQUENCY2``: filter out low frequencies and DC term of FFT.
-                                     ``TUNE_MIN_FREQUENCY2`` corresponds to the index
-                                     (after flipping quadrants) squared.
-            ``TUNE_MAX_FREQUENCY2``: filter out high frequencies of FFT.
-                                     ``TUNE_MAX_FREQUENCY2`` corresponds to the index
-                                     (after flipping quadrants) squared.
-        """
-
-        self.supported = ','.join(plt.figure().canvas.get_supported_filetypes())
-        plt.close()
-
-        self.fft_size = fft_size
-        self.fft_size2 = fft_size // 2
-        self.step = step
-        self.jobs = jobs
-
-        self.TUNE_THRESHOLD_DIRECTION = 5.0
-        self.TUNE_THRESHOLD_PERIOD = 25.0
-        self.TUNE_NOISE = 4.0
-        self.TUNE_MIN_FREQUENCY2 = 4**2 # seems a good value
-        self.TUNE_MAX_FREQUENCY2 = self.fft_size2**2
-
-        self.__update_precalc()
-
-        try:
-            self.image_data = imread(fname, mode='I')
-            self.image_fname = fname
-        except:
-            raise ValueError("Could not read file {}".format(fname))
-
-
-    def __update_precalc(self):
-        """
-        Updates/sets all attributes that depend on ``self.fft_size`` and invalidates
-        results by setting ``results_are_valid = False``.
-        This is used in ``__init__()`` and is triggered by the ``fft_size`` setter.
-
-        Constant data:
+    class Constants:
+        """Constants that depend on ``fft_size`` (and value of ``MIN_FREQUENCY`` only
             r2 : nparray
                 the geometrical distance (index) squared of a given entry.
             alpha : nparray
@@ -373,16 +324,82 @@ class HRTEMCrystallinity:
             han2d : nparray
                 2D Hanning window
         """
+        def __init__(self, fft_size, MIN_FREQUENCY2):
+            fft_size2 = fft_size // 2
+            MAX_FREQUENCY2 = fft_size2**2
+            x, y = np.ogrid[-fft_size2 : fft_size2,
+                            -fft_size2 : fft_size2]
+            self.r2 = x*x + y*y
+            self.alpha = np.arctan2(x, y)
+            self.alpha[self.alpha < 0] += np.pi
+            self.mask = ~((self.r2 > MIN_FREQUENCY2) & (self.r2 < MAX_FREQUENCY2))
+            han = np.hanning(fft_size)
+            self.han2d = np.sqrt(np.outer(han, han))
+
+
+    class TuningParameters:
+        """Contains tuning parameters
+            ``THRESHOLD_DIRECTION``: a valid peak along the azimuth must be higher
+                                     than ``THRESHOLD_DIRECTION`` times the
+                                     mean intensity
+            ``THRESHOLD_PERIOD``: a valid peak along the frequency (radius) must
+                                  be higher than ``THRESHOLD_PERIOD`` times
+                                  the mean intensity.
+            ``NOISE``: everything below mean() + ``NOISE``*std is considered
+                       noise.
+            ``MIN_FREQUENCY2``: filter out low frequencies and DC term of FFT.
+                                ``MIN_FREQUENCY2`` corresponds to the index
+                                (after flipping quadrants) squared.
+            ``MAX_FREQUENCY2``: filter out high frequencies of FFT.
+                                ``MAX_FREQUENCY2`` corresponds to the index
+                                (after flipping quadrants) squared.
+        """
+        def __init__(self, fft_size2):
+            self.THRESHOLD_DIRECTION = 5.0
+            self.THRESHOLD_PERIOD = 25.0
+            self.NOISE = 4.0
+            self.MIN_FREQUENCY2 = 4**2 # seems a good value
+            self.MAX_FREQUENCY2 = fft_size2**2
+
+
+    def __init__(self, fft_size=32, step=1, jobs=1, fname=None):
+        """
+        Initialized basic attributes.
+        """
+        self.supported = ','.join(plt.figure().canvas.get_supported_filetypes())
+        plt.close()
+
+        self.fft_size = fft_size
+        self.fft_size2 = fft_size // 2
+        self.step = step
+        self.jobs = jobs
+
+        self.tuned = self.TuningParameters(self.fft_size2)
+        self.__update_precalc()
+
+        try:
+            self.image_data = imread(fname, mode='I')
+            self.image_fname = fname
+        except:
+            raise ValueError("Could not read file {}".format(fname))
+
+
+    def __update_precalc(self):
+        """
+        Updates/sets all attributes that depend on ``self.fft_size``. This includes
+        all attributes of ``Constants``. Then invalidates results by setting
+        ``results_are_valid = False``.
+        This is used in ``__init__()`` and is triggered by the ``fft_size`` setter.
+        """
         self.fft_size2 = self.fft_size // 2
-        self.TUNE_MAX_FREQUENCY2 = self.fft_size2**2
-        x, y = np.ogrid[-self.fft_size2 : self.fft_size2,
-                        -self.fft_size2 : self.fft_size2]
-        self.r2 = x*x + y*y
-        self.alpha = np.arctan2(x, y)
-        self.alpha[self.alpha < 0] += np.pi
-        self.mask = ~((self.r2 > self.TUNE_MIN_FREQUENCY2) & (self.r2 < self.TUNE_MAX_FREQUENCY2))
-        han = np.hanning(self.fft_size)
-        self.han2d = np.sqrt(np.outer(han, han))
+        self.tuned.MAX_FREQUENCY2 = self.fft_size2**2
+
+        try:
+            del self.constant
+        except:
+            pass
+
+        self.constant = self.Constants(self.fft_size, self.tuned.MIN_FREQUENCY2)
         self.results_are_valid = False
 
 
@@ -500,7 +517,6 @@ class HRTEMCrystallinity:
                 plt.show()
 
 
-
     def save_data(self, compressed=True):
         """Save data in (compressed) ASCII files
         """
@@ -515,11 +531,11 @@ class HRTEMCrystallinity:
         header = '#\n' \
         + '# crist.py version {}\n'.format(__version__) \
         + '# Tuning knobs:\n' \
-        + '#        TUNE_MIN_FREQUENCY2: {}\n'.format(self.TUNE_MIN_FREQUENCY2) \
-        + '#        TUNE_MAX_FREQUENCY2: {}\n'.format(self.TUNE_MAX_FREQUENCY2) \
-        + '#                 TUNE_NOISE: {}\n'.format(self.TUNE_NOISE) \
-        + '#   TUNE_THRESHOLD_DIRECTION: {}\n'.format(self.TUNE_THRESHOLD_DIRECTION) \
-        + '#      TUNE_THRESHOLD_PERIOD: {}\n'.format(self.TUNE_THRESHOLD_PERIOD) \
+        + '#        TUNE_MIN_FREQUENCY2: {}\n'.format(self.tuned.MIN_FREQUENCY2) \
+        + '#        TUNE_MAX_FREQUENCY2: {}\n'.format(self.tuned.MAX_FREQUENCY2) \
+        + '#                 TUNE_NOISE: {}\n'.format(self.tuned.NOISE) \
+        + '#   TUNE_THRESHOLD_DIRECTION: {}\n'.format(self.tuned.THRESHOLD_DIRECTION) \
+        + '#      TUNE_THRESHOLD_PERIOD: {}\n'.format(self.tuned.THRESHOLD_PERIOD) \
         + '#\n' \
         + '# Results for {} ({}x{} [vxh])\n'.format(self.image_fname,
                                                     self.image_data.shape[0],
@@ -556,10 +572,13 @@ class HRTEMCrystallinity:
             res = parallel(delayed(inner_loop)(v,
                                                self.image_data,
                                                self.fft_size, self.step,
-                                               (self.r2, self.alpha, self.mask, self.han2d),
-                                               (self.TUNE_NOISE,
-                                                self.TUNE_THRESHOLD_PERIOD,
-                                                self.TUNE_THRESHOLD_DIRECTION))
+                                               (self.constant.r2,
+                                                self.constant.alpha,
+                                                self.constant.mask,
+                                                self.constant.han2d),
+                                               (self.tuned.NOISE,
+                                                self.tuned.THRESHOLD_PERIOD,
+                                                self.tuned.THRESHOLD_DIRECTION))
                            for v in range(self.fft_size2,
                                           self.image_data.shape[0] - self.fft_size2,
                                           self.step))
