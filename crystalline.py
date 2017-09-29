@@ -396,7 +396,7 @@ class HRTEMCrystallinity:
 
         try:
             del self.constant
-        except:
+        except AttributeError:
             pass
 
         self.constant = self.Constants(self.fft_size, self.tuned.MIN_FREQUENCY2)
