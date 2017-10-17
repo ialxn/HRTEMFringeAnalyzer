@@ -232,13 +232,13 @@ def __analyze_lattice_const(power_spectrum, r2, TUNE_THRESHOLD_PERIOD):
     return d, sigma_d
 
 
-def inner_loop(v, img, fft_size, step, const, tune):
+def process_row(row, img, fft_size, step, const, tune):
     """
-    Analyzes horizontal line ``v`` in image ``img``
+    Analyzes horizontal row ``row`` in image ``img``
 
     Parameters:
-        v : int
-            Line number (horizontal index) to be analyzed
+        row : int
+            row number (horizontal index) to be analyzed
         img : np array
             Image to be analyzed
         fft_size : int
@@ -260,7 +260,7 @@ def inner_loop(v, img, fft_size, step, const, tune):
                 2D Hanning window applied to roi before the 2D FFT
 
     Returns
-        tuple of np arrays of length ``Nh``
+        tuple of np arrays of length ``Ncols``
         d : np array
             Period found
         sigma_d : np array
@@ -273,18 +273,18 @@ def inner_loop(v, img, fft_size, step, const, tune):
     r2, alpha, mask, han2d = const
     TUNE_NOISE, TUNE_THRESHOLD_PERIOD, TUNE_THRESHOLD_DIRECTION = tune
     fft_size2 = fft_size // 2
-    Nh = int(np.ceil((img.shape[1] - fft_size) / step))
-    d = np.zeros([Nh])
-    sigma_d = np.zeros([Nh])
-    phi = np.zeros([Nh])
-    sigma_phi = np.zeros([Nh])
+    Ncols = int(np.ceil((img.shape[1] - fft_size) / step))
+    d = np.zeros([Ncols])
+    sigma_d = np.zeros([Ncols])
+    phi = np.zeros([Ncols])
+    sigma_phi = np.zeros([Ncols])
 
-    for rh, h in enumerate(range(fft_size2,
-                                 img.shape[1] - fft_size2,
-                                 step)):
+    for idx, col in enumerate(range(fft_size2,
+                                    img.shape[1] - fft_size2,
+                                    step)):
 
-        roi = img[v-fft_size2 : v+fft_size2,
-                  h-fft_size2 : h+fft_size2]
+        roi = img[row-fft_size2 : row+fft_size2,
+                  col-fft_size2 : col+fft_size2]
         # equalize contrast in each roi: -0.5 .. 0.5
         roi = (roi + roi.min()) / roi.max()
         roi -= roi.mean()
@@ -297,10 +297,10 @@ def inner_loop(v, img, fft_size, step, const, tune):
         power_spectrum[power_spectrum <= __noise_floor(power_spectrum, r2, TUNE_NOISE)] = 0
         power_spectrum[power_spectrum is 0] = np.nan
 
-        d[rh], sigma_d[rh] = __analyze_lattice_const(power_spectrum, r2,
-                                                     TUNE_THRESHOLD_PERIOD)
-        phi[rh], sigma_phi[rh] = __analyze_direction(power_spectrum, r2, alpha,
-                                                     TUNE_THRESHOLD_DIRECTION)
+        d[idx], sigma_d[idx] = __analyze_lattice_const(power_spectrum, r2,
+                                                       TUNE_THRESHOLD_PERIOD)
+        phi[idx], sigma_phi[idx] = __analyze_direction(power_spectrum, r2, alpha,
+                                                       TUNE_THRESHOLD_DIRECTION)
 
     return (d, sigma_d, phi, sigma_phi)
 
@@ -611,31 +611,30 @@ class HRTEMCrystallinity:
         """
         # x-axis is im.shape[1] -> horizontal (left->right)
         # y-axis is im.shape[0] -> vertical (top->down)
-        # indices v,h for center of roi in image
-        Nh = int(np.ceil((self.image_data.shape[1] - self.fft_size) / self.step))
-        Nv = int(np.ceil((self.image_data.shape[0] - self.fft_size) / self.step))
+        Ncols = int(np.ceil((self.image_data.shape[1] - self.fft_size) / self.step))
+        Nrows = int(np.ceil((self.image_data.shape[0] - self.fft_size) / self.step))
 
         with Parallel(n_jobs=self.jobs) as parallel:
-            res = parallel(delayed(inner_loop)(v,
-                                               self.image_data,
-                                               self.fft_size, self.step,
-                                               (self.constant.r2,
-                                                self.constant.alpha,
-                                                self.constant.mask,
-                                                self.constant.han2d),
-                                               (self.tuned.NOISE,
-                                                self.tuned.THRESHOLD_PERIOD,
-                                                self.tuned.THRESHOLD_DIRECTION))
-                           for v in range(self.fft_size2,
-                                          self.image_data.shape[0] - self.fft_size2,
-                                          self.step))
+            res = parallel(delayed(process_row)(row,
+                                                self.image_data,
+                                                self.fft_size, self.step,
+                                                (self.constant.r2,
+                                                 self.constant.alpha,
+                                                 self.constant.mask,
+                                                 self.constant.han2d),
+                                                (self.tuned.NOISE,
+                                                 self.tuned.THRESHOLD_PERIOD,
+                                                 self.tuned.THRESHOLD_DIRECTION))
+                           for row in range(self.fft_size2,
+                                            self.image_data.shape[0] - self.fft_size2,
+                                            self.step))
 
             d, sigma_d, phi, sigma_phi = zip(*res)
 
-        self.d = np.array(d).reshape(Nv, Nh)
-        self.sigma_d = np.array(sigma_d).reshape(Nv, Nh)
-        self.phi = np.array(phi).reshape(Nv, Nh)
-        self.sigma_phi = np.array(sigma_phi).reshape(Nv, Nh)
+        self.d = np.array(d).reshape(Nrows, Ncols)
+        self.sigma_d = np.array(sigma_d).reshape(Nrows, Ncols)
+        self.phi = np.array(phi).reshape(Nrows, Ncols)
+        self.sigma_phi = np.array(sigma_phi).reshape(Nrows, Ncols)
         self.results_are_valid = True
 
 
