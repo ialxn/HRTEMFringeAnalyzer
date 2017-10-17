@@ -487,6 +487,17 @@ class HRTEMCrystallinity:
         cbar.set_label(label)
         ax.set_title(title)
 
+    def __do_plot(self, outfname):
+        if outfname is None:
+            plt.show()
+        else:
+            try:
+                plt.savefig(outfname)
+            except ValueError:
+                print('Cannot save figure ({})'.format(outfname))
+                print('Supported formats: {}'.format(self.supported))
+                plt.show()
+
     def summarize_data(self, outfname=None,
                        limits_d=(None, None),
                        limits_sigma_d=(None, None),
@@ -511,17 +522,7 @@ class HRTEMCrystallinity:
                              r'spread ($\sigma_\phi$)', limits_sigma_phi)
 
         plt.tight_layout()
-
-        if outfname is None:
-            plt.show()
-        else:
-            try:
-                plt.savefig(outfname)
-            except ValueError:
-                print('Cannot save figure ({})'.format(outfname))
-                print('Supported formats: {}'.format(self.supported))
-                plt.show()
-
+        self.__do_plot(outfname)
 
     def plot_overlayed(self, datum, outfname=None, limits=(None, None)):
         """Plots selected result as overlay on image
@@ -561,15 +562,7 @@ class HRTEMCrystallinity:
         ax.xaxis.set_visible(False)
         ax.yaxis.set_visible(False)
 
-        if outfname is None:
-            plt.show()
-        else:
-            try:
-                plt.savefig(outfname)
-            except ValueError:
-                print('Cannot save figure ({})'.format(outfname))
-                print('Supported formats: {}'.format(self.supported))
-                plt.show()
+        self.__do_plot(outfname)
 
     def save_data(self, compressed=True):
         """Save data in (compressed) ASCII files
