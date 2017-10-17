@@ -42,196 +42,6 @@ def __gaussian(x, *p):
     return A * np.exp(-factor*((x - x_0) / sigma)**2) + offset
 
 
-def __find_peak(x, y):
-    """Determines peak position and FWHH
-
-    Parameters:
-        x : array of floats
-            x values
-        y : array of floats
-            corresponding y values
-
-    Returns
-        x_center : float
-            x value for which y=f(x) is maximum
-        sigma : float
-            FWHH
-    """
-    idx_max = np.argmax(y)
-    p_0 = [y[idx_max],
-           x[idx_max],
-           x.ptp() * 0.05,
-           y.mean() * 0.5]
-    try:
-        warnings.simplefilter('ignore', OptimizeWarning)
-        coeffs, cov = curve_fit(__gaussian,
-                                x,
-                                y,
-                                p0=p_0)
-    except (ValueError, RuntimeError):
-        x_center = np.nan
-        sigma = np.nan
-    else:
-        # successful fit:
-        #   max_value: in (validated) x-range and finite error
-        #   delta_value: positive and covariance is positive
-        if (coeffs[1] > x[0]) and (coeffs[1] < x[-1]) and np.isfinite(cov[1, 1]):
-            x_center = coeffs[1]
-        else:
-            x_center = np.nan
-
-        if (coeffs[2] > 0.0) and (cov[2, 2] > 0.0):
-            sigma = coeffs[2]
-        else:
-            sigma = np.nan
-
-    return x_center, sigma
-
-
-def __noise_floor(window, r2, TUNE_NOISE):
-    """Determine aproximate noise floor of  ``window``
-
-    Parameters:
-        window : np array
-            Window to be analyzed
-        r2 : np.array
-            squared distances of data points to center of ``s``
-
-    Ad-hoc definition of the noise floor:
-        + use all data in cornes of 2D FFT (i.e. outside of circle
-          with radius ``R`` = ``FFT_SIZE//2``)
-        + calculate mean and standard deviation
-        + define noise floor as mean-value + ``TUNE_NOISE``*standard deviations
-
-    Returns
-        noise_floor : float
-            mean + ``TUNE_NOISE`` * sigma
-    """
-    mask = (r2 >= (window.shape[0] // 2)**2)
-    mean = window[mask].mean()
-    error = window[mask].std()
-
-    return mean + TUNE_NOISE * error
-
-
-def __analyze_direction(window, r2, alpha, TUNE_THRESHOLD_DIRECTION):
-    """Find peak in FFT window ``window`` and return its direction
-    and angular spread
-
-    Parameters:
-        window : np.array
-            2D Fourier transform
-        r2 : np.array
-            squared distances of each pixel in the 2D FFT relative to the one
-            that represents the zero frequency
-        alpha : np.array
-            angle of each pixel in 2D FFT relative to the pixel that
-            represents the zero frequency
-        TUNE_THRESHOLD_DIRECTION : float
-            threshold value to discriminate noise peaks
-
-    Returns
-        phi : float
-            predominant direction of periodicity (0..pi)
-        delta_phi : float
-            FWHH of ``omega``
-    """
-    bins = 36 # 10 degrees per bin
-    warnings.simplefilter('ignore', RuntimeWarning)
-    angle, edges = np.histogram(alpha.flatten(),
-                                bins=bins,
-                                weights=window.flatten() / r2.flatten())
-
-    if np.nanmax(angle) > TUNE_THRESHOLD_DIRECTION * np.nanmean(angle):
-        #   significant peak
-        # replace boundaries by center of bins
-        edges += 0.5 * (edges[1] - edges[0])
-        # peak could lie close to zero or pi, which makes fitting a gaussian
-        # impossible (or problematic at least).
-        # if peak is in a unproblematic position (central two quarters, bins 9-26)
-        # pi/4 < peak_position < 3pi/4 then do nothing
-        # if peak lies in first or last quarter (bins 0-8 or 27-35)
-        # do wrap around, i.e. use quarters 2,3,0,1 (in this order) and analyze
-        # pi/2 < peak_position < 3pi/2
-        idx = np.nanargmax(angle)
-        if (idx < 9) or (idx >= 27):
-            # note: len(edges) == bins+1! after the shift by half a bin width
-            #       edges[-1] is the offset to be added for the wrap-around
-            edges = np.append(edges[18 : -1], edges[0 : 18] + edges[-1])
-            angle = np.append(angle[18 : ], angle[0 : 18])
-        else:
-            # remove last element of edges to have len(edges) == bins
-            edges = np.append(edges[ : -1], [])
-
-        # replace non-finite entries by linear interpolation between its neighbors
-        mask = ~np.isfinite(angle)
-        angle[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), angle[~mask])
-
-        phi, sigma_phi = __find_peak(edges, angle)
-
-        if np.isnan(sigma_phi):
-            phi = np.nan
-        else:
-            # because of the wrap-around omega could be larger than pi
-            if phi > np.pi:
-                phi -= np.pi
-    else:
-        phi = np.nan
-        sigma_phi = np.nan
-
-    return phi, sigma_phi
-
-
-def __analyze_lattice_const(power_spectrum, r2, TUNE_THRESHOLD_PERIOD):
-    """Determine lattice constant and coherence length from FFT. All calculations
-    in pixel numbers.
-
-    Parameters:
-        power_spectrum : np.array
-            abs(2D Fourier transform)
-        r2 : np.array
-            squared distances of each pixel in the 2D FFT relative to the one
-            that represents the zero frequency i.e. frequency^2
-        TUNE_THRESHOLD_PERIOD : float
-            threshold value to discriminate noise peaks
-
-    Returns
-        d : float
-            Period found
-        sigma_d : float
-            Coherence length (length of periodic structure) as A.U.
-    """
-    bins = power_spectrum.shape[0] // 2  # ad hoc definition
-    # build histogram (power as function of radius, bin edges are radius in pixels)
-    # weights should  include 1/r^2 i.e. power_spectrum/r^2
-    # we integrate azimuthally, thus noise at large ``r`` contributes more
-    # than noise (or signal) at small ``r``
-    warnings.simplefilter('ignore', RuntimeWarning)
-    power, edges = np.histogram(np.sqrt(r2).flatten(),
-                                bins=bins,
-                                weights=power_spectrum.flatten() / r2.flatten())
-
-    if np.nanmax(power) > TUNE_THRESHOLD_PERIOD * np.nanmean(power):
-        # significant peak
-        # replace boundaries by centers of bins
-        edges += 0.5 * (edges[1] - edges[0])
-        # replace non-finite entries by linear interpolation between its neighbors
-        mask = ~np.isfinite(power)
-        power[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), power[~mask])
-
-        d, sigma_d = __find_peak(edges[ : -1], power)
-        # convert to periode
-        d = power_spectrum.shape[0] / d
-        sigma_d = 1.0 / sigma_d
-        if np.isnan(sigma_d):
-            d = np.nan
-    else:
-        d = np.nan
-        sigma_d = np.nan
-
-    return d, sigma_d
-
-
 def process_row(row, img, fft_size, step, const, tune):
     """
     Analyzes horizontal row ``row`` in image ``img``
@@ -270,6 +80,185 @@ def process_row(row, img, fft_size, step, const, tune):
         sigma_phi : np array
             Error of direction vector
     """
+    def noise_floor(window, r2, TUNE_NOISE):
+        """Determine aproximate noise floor of  ``window``
+
+        Parameters:
+            window : np array
+                Window to be analyzed
+            r2 : np.array
+                squared distances of data points to center of ``s``
+
+        Ad-hoc definition of the noise floor:
+            + use all data in cornes of 2D FFT (i.e. outside of circle
+              with radius ``R`` = ``FFT_SIZE//2``)
+            + calculate mean and standard deviation
+            + define noise floor as mean-value + ``TUNE_NOISE``*standard deviations
+
+        Returns
+            noise_floor : float
+                mean + ``TUNE_NOISE`` * sigma
+        """
+        mask = (r2 >= (window.shape[0] // 2)**2)
+        mean = window[mask].mean()
+        error = window[mask].std()
+        return mean + TUNE_NOISE * error
+
+    def find_peak(x, y):
+        """Determines peak position and FWHH
+
+        Parameters:
+            x : array of floats
+                x values
+            y : array of floats
+                corresponding y values
+
+        Returns
+            x_center : float
+                x value for which y=f(x) is maximum
+            sigma : float
+                FWHH
+        """
+        idx_max = np.argmax(y)
+        p_0 = [y[idx_max],
+               x[idx_max],
+               x.ptp() * 0.05,
+               y.mean() * 0.5]
+        try:
+            warnings.simplefilter('ignore', OptimizeWarning)
+            coeffs, cov = curve_fit(__gaussian,
+                                    x,
+                                    y,
+                                    p0=p_0)
+        except (ValueError, RuntimeError):
+            x_center = np.nan
+            sigma = np.nan
+        else:
+            # successful fit:
+            #   max_value: in (validated) x-range and finite error
+            #   delta_value: positive and covariance is positive
+            if (coeffs[1] > x[0]) and (coeffs[1] < x[-1]) and np.isfinite(cov[1, 1]):
+                x_center = coeffs[1]
+            else:
+                x_center = np.nan
+            if (coeffs[2] > 0.0) and (cov[2, 2] > 0.0):
+                sigma = coeffs[2]
+            else:
+                sigma = np.nan
+        return x_center, sigma
+
+    def analyze_lattice_const(power_spectrum, r2, TUNE_THRESHOLD_PERIOD):
+        """Determine lattice constant and coherence length from FFT. All calculations
+        in pixel numbers.
+
+        Parameters:
+            power_spectrum : np.array
+                abs(2D Fourier transform)
+            r2 : np.array
+                squared distances of each pixel in the 2D FFT relative to the one
+                that represents the zero frequency i.e. frequency^2
+            TUNE_THRESHOLD_PERIOD : float
+                threshold value to discriminate noise peaks
+
+        Returns
+            d : float
+                Period found
+            sigma_d : float
+                Coherence length (length of periodic structure) as A.U.
+                """
+        bins = power_spectrum.shape[0] // 2  # ad hoc definition
+        # build histogram (power as function of radius, bin edges are radius in pixels)
+        # weights should  include 1/r^2 i.e. power_spectrum/r^2
+        # we integrate azimuthally, thus noise at large ``r`` contributes more
+        # than noise (or signal) at small ``r``
+        warnings.simplefilter('ignore', RuntimeWarning)
+        power, edges = np.histogram(np.sqrt(r2).flatten(),
+                                    bins=bins,
+                                    weights=power_spectrum.flatten() / r2.flatten())
+        if np.nanmax(power) > TUNE_THRESHOLD_PERIOD * np.nanmean(power):
+            # significant peak
+            # replace boundaries by centers of bins
+            edges += 0.5 * (edges[1] - edges[0])
+            # replace non-finite entries by linear interpolation between its neighbors
+            mask = ~np.isfinite(power)
+            power[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), power[~mask])
+
+            d, sigma_d = find_peak(edges[ : -1], power)
+            # convert to periode
+            d = power_spectrum.shape[0] / d
+            sigma_d = 1.0 / sigma_d
+            if np.isnan(sigma_d):
+                d = np.nan
+        else:
+            d = np.nan
+            sigma_d = np.nan
+        return d, sigma_d
+
+    def analyze_direction(window, r2, alpha, TUNE_THRESHOLD_DIRECTION):
+        """Find peak in FFT window ``window`` and return its direction
+        and angular spread
+
+        Parameters:
+            window : np.array
+                2D Fourier transform
+            r2 : np.array
+                squared distances of each pixel in the 2D FFT relative to the one
+                that represents the zero frequency
+            alpha : np.array
+                angle of each pixel in 2D FFT relative to the pixel that
+                represents the zero frequency
+            TUNE_THRESHOLD_DIRECTION : float
+                threshold value to discriminate noise peaks
+
+        Returns
+            phi : float
+                predominant direction of periodicity (0..pi)
+            delta_phi : float
+                FWHH of ``omega``
+        """
+        bins = 36 # 10 degrees per bin
+        warnings.simplefilter('ignore', RuntimeWarning)
+        angle, edges = np.histogram(alpha.flatten(),
+                                    bins=bins,
+                                    weights=window.flatten() / r2.flatten())
+        if np.nanmax(angle) > TUNE_THRESHOLD_DIRECTION * np.nanmean(angle):
+            #   significant peak
+            # replace boundaries by center of bins
+            edges += 0.5 * (edges[1] - edges[0])
+            # peak could lie close to zero or pi, which makes fitting a gaussian
+            # impossible (or problematic at least).
+            # if peak is in a unproblematic position (central two quarters, bins 9-26)
+            # pi/4 < peak_position < 3pi/4 then do nothing
+            # if peak lies in first or last quarter (bins 0-8 or 27-35)
+            # do wrap around, i.e. use quarters 2,3,0,1 (in this order) and analyze
+            # pi/2 < peak_position < 3pi/2
+            idx = np.nanargmax(angle)
+            if (idx < 9) or (idx >= 27):
+                # note: len(edges) == bins+1! after the shift by half a bin width
+                #       edges[-1] is the offset to be added for the wrap-around
+                edges = np.append(edges[18 : -1], edges[0 : 18] + edges[-1])
+                angle = np.append(angle[18 : ], angle[0 : 18])
+            else:
+                # remove last element of edges to have len(edges) == bins
+                edges = np.append(edges[ : -1], [])
+            # replace non-finite entries by linear interpolation between its neighbors
+            mask = ~np.isfinite(angle)
+            angle[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), angle[~mask])
+            phi, sigma_phi = find_peak(edges, angle)
+            if np.isnan(sigma_phi):
+                phi = np.nan
+            else:
+                # because of the wrap-around omega could be larger than pi
+                if phi > np.pi:
+                    phi -= np.pi
+        else:
+            phi = np.nan
+            sigma_phi = np.nan
+        return phi, sigma_phi
+
+    #
+    #begin ``process_row``
+    #
     r2, alpha, mask, han2d = const
     TUNE_NOISE, TUNE_THRESHOLD_PERIOD, TUNE_THRESHOLD_DIRECTION = tune
     fft_size2 = fft_size // 2
@@ -294,13 +283,13 @@ def process_row(row, img, fft_size, step, const, tune):
         # set very low and very high frequencies to zero (mask)
         # set to zero all frequencies with power smaller than noise floor
         power_spectrum[mask] = 0
-        power_spectrum[power_spectrum <= __noise_floor(power_spectrum, r2, TUNE_NOISE)] = 0
+        power_spectrum[power_spectrum <= noise_floor(power_spectrum, r2, TUNE_NOISE)] = 0
         power_spectrum[power_spectrum is 0] = np.nan
 
-        d[idx], sigma_d[idx] = __analyze_lattice_const(power_spectrum, r2,
-                                                       TUNE_THRESHOLD_PERIOD)
-        phi[idx], sigma_phi[idx] = __analyze_direction(power_spectrum, r2, alpha,
-                                                       TUNE_THRESHOLD_DIRECTION)
+        d[idx], sigma_d[idx] = analyze_lattice_const(power_spectrum, r2,
+                                                     TUNE_THRESHOLD_PERIOD)
+        phi[idx], sigma_phi[idx] = analyze_direction(power_spectrum, r2, alpha,
+                                                     TUNE_THRESHOLD_DIRECTION)
 
     return (d, sigma_d, phi, sigma_phi)
 
@@ -486,6 +475,7 @@ class HRTEMCrystallinity:
         cbar = plt.colorbar(cax, shrink=0.7)
         cbar.set_label(label)
         ax.set_title(title)
+
 
     def __do_plot(self, outfname):
         if outfname is None:
