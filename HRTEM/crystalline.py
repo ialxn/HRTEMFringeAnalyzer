@@ -42,7 +42,7 @@ def __gaussian(x, *p):
     return A * np.exp(-factor*((x - x_0) / sigma)**2) + offset
 
 
-def process_row(row, img, fft_size, step, const, tune):
+def process_row(row, img, const1, const2, tune):
     """
     Analyzes horizontal row ``row`` in image ``img``
 
@@ -51,12 +51,13 @@ def process_row(row, img, fft_size, step, const, tune):
             row number (horizontal index) to be analyzed
         img : np array
             Image to be analyzed
-        fft_size : int
-            width of window to be analyzed (2^N x 2^N)
-        step : int
-            Horizontal (and vertical) step size to translate
-            window
-        const : tuple of
+        const1 : tuple
+            fft_size : int
+                width of window to be analyzed (2^N x 2^N)
+            step : int
+                Horizontal (and vertical) step size to translate
+                window
+        const2 : tuple of
             r2 : np.array
                 squared distances of each pixel in the 2D FFT relative to the one
                 that represents the zero frequency
@@ -259,7 +260,8 @@ def process_row(row, img, fft_size, step, const, tune):
     #
     #begin ``process_row``
     #
-    r2, alpha, mask, han2d = const
+    fft_size, step = const1
+    r2, alpha, mask, han2d = const2
     TUNE_NOISE, TUNE_THRESHOLD_PERIOD, TUNE_THRESHOLD_DIRECTION = tune
     fft_size2 = fft_size // 2
     Ncols = int(np.ceil((img.shape[1] - fft_size) / step))
@@ -607,7 +609,7 @@ class HRTEMCrystallinity:
         with Parallel(n_jobs=self.jobs) as parallel:
             res = parallel(delayed(process_row)(row,
                                                 self.image_data,
-                                                self.fft_size, self.step,
+                                                (self.fft_size, self.step),
                                                 (self.constant.r2,
                                                  self.constant.alpha,
                                                  self.constant.mask,
