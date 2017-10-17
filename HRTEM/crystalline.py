@@ -362,11 +362,10 @@ class HRTEMCrystallinity:
         plt.close()
 
         self.fft_size = fft_size
-        self.fft_size2 = fft_size // 2
         self.step = step
         self.jobs = jobs
 
-        self.tuned = self.TuningParameters(self.fft_size2)
+        self.tuned = self.TuningParameters(fft_size // 2)
         self.__update_precalc()
 
         try:
@@ -383,8 +382,8 @@ class HRTEMCrystallinity:
         ``results_are_valid = False``.
         This is used in ``__init__()`` and is triggered by the ``fft_size`` setter.
         """
-        self.fft_size2 = self.fft_size // 2
-        self.tuned.MAX_FREQUENCY2 = self.fft_size2**2
+        fft_size2 = self.fft_size // 2
+        self.tuned.MAX_FREQUENCY2 = fft_size2**2
 
         try:
             del self.constant
@@ -532,9 +531,10 @@ class HRTEMCrystallinity:
             return
 
         ax = plt.subplot(111)
+        fft_size2 = self.fft_size // 2
         ax.imshow(self.image_data, extent=None, aspect='equal', cmap='gray')
-        x = np.arange(self.fft_size2, self.image_data.shape[1] - self.fft_size2, self.step)
-        y = np.arange(self.fft_size2, self.image_data.shape[0] - self.fft_size2, self.step)
+        x = np.arange(fft_size2, self.image_data.shape[1] - fft_size2, self.step)
+        y = np.arange(fft_size2, self.image_data.shape[0] - fft_size2, self.step)
         cax = ax.contourf(x, y, datum, alpha=0.5, cmap='jet', vmin=limits[0], vmax=limits[1])
         if datum is self.d:
             self.__finish_overlay(ax, cax, '$d$  [pixel]', r'spacing ($d$)')
@@ -605,7 +605,7 @@ class HRTEMCrystallinity:
         # y-axis is im.shape[0] -> vertical (top->down)
         Ncols = int(np.ceil((self.image_data.shape[1] - self.fft_size) / self.step))
         Nrows = int(np.ceil((self.image_data.shape[0] - self.fft_size) / self.step))
-
+        fft_size2 = self.fft_size // 2
         with Parallel(n_jobs=self.jobs) as parallel:
             res = parallel(delayed(process_row)(row,
                                                 self.image_data,
@@ -617,8 +617,8 @@ class HRTEMCrystallinity:
                                                 (self.tuned.NOISE,
                                                  self.tuned.THRESHOLD_PERIOD,
                                                  self.tuned.THRESHOLD_DIRECTION))
-                           for row in range(self.fft_size2,
-                                            self.image_data.shape[0] - self.fft_size2,
+                           for row in range(fft_size2,
+                                            self.image_data.shape[0] - fft_size2,
                                             self.step))
 
             d, sigma_d, phi, sigma_phi = zip(*res)
