@@ -481,6 +481,11 @@ class HRTEMCrystallinity:
         this_ax.xaxis.set_visible(False)
         this_ax.yaxis.set_visible(False)
 
+    @staticmethod
+    def __finish_overlay(ax, cax, label, title):
+        cbar = plt.colorbar(cax, shrink=0.7)
+        cbar.set_label(label)
+        ax.set_title(title)
 
     def summarize_data(self, outfname=None,
                        limits_d=(None, None),
@@ -517,11 +522,6 @@ class HRTEMCrystallinity:
                 print('Supported formats: {}'.format(self.supported))
                 plt.show()
 
-    @staticmethod
-    def __finish_overlay(ax, cax, label, title):
-        cbar = plt.colorbar(cax, shrink=0.7)
-        cbar.set_label(label)
-        ax.set_title(title)
 
     def plot_overlayed(self, datum, outfname=None, limits=(None, None)):
         """Plots selected result as overlay on image
