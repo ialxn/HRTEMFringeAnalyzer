@@ -300,7 +300,7 @@ def process_row(row, img, const1, const2, tune):
 
 
 __version__ = ''
-class HRTEMCrystallinity:
+class HRTEMFringeAnalyzer:
     """
     """
     class Constants:
@@ -665,7 +665,7 @@ def main():
 
 
     args = parse_command_line()
-    H = HRTEMCrystallinity(fft_size=args.FFT_size, step=args.step, jobs=args.jobs, fname=args.file)
+    H = HRTEMFringeAnalyzer(fft_size=args.FFT_size, step=args.step, jobs=args.jobs, fname=args.file)
     print('start:\tFFT size {}\n\tstep {}'.format(H.fft_size, H.step))
     print('analyze')
     H.analyze()
