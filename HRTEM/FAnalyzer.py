@@ -31,7 +31,7 @@ def main():
                             action='store_true', default=False,
                             help='Store result in gzipped text files')
         parser.add_argument('-o', '--output', metavar='FILE', type=str, default=None,
-                            help='Output to file. Supported formats: ' + supported)
+                            help='Summary output to file. Supported formats: ' + supported)
         parser.add_argument('-O', '--Overlays', metavar='FILE', type=str, default=None,
                             help='Plot results overlayed on micrograph. Supported formats: '
                             + supported)
