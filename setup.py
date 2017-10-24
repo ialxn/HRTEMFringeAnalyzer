@@ -3,7 +3,7 @@
 
 from distutils.core import setup
 
-with open('HRTEM/crystalline.py') as file:
+with open('HRTEM/HRTEMFringeAnalyzer.py') as file:
     for line in file:
          if '__version__' in line:
              tokens = line.rsplit("'", 2)
@@ -13,7 +13,7 @@ with open('HRTEM/crystalline.py') as file:
                  this_version = 'no version defined'
              break
 
-setup(name='HRTEMCrystallinity',
+setup(name='HRTEMFringeAnalyzer',
       version=this_version,
       description='Analyze cristallinity from HRTEM Micrographs',
       author='Ivo Alxneit',
