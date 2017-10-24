@@ -33,12 +33,16 @@ def main():
         parser.add_argument('-o', '--output', metavar='FILE', type=str, default=None,
                             help='Output to file. Supported formats: ' + supported)
         parser.add_argument('-O', '--Overlays', metavar='FILE', type=str, default=None,
-                            help='Plot results overlayed on micrograph. Supported formats: ' + supported)
+                            help='Plot results overlayed on micrograph. Supported formats: '
+                            + supported)
         return parser.parse_args()
 
 
     args = parse_command_line()
-    FA = HRTEMFringeAnalyzer(fft_size=args.FFT_size, step=args.step, jobs=args.jobs, fname=args.file)
+    FA = HRTEMFringeAnalyzer(fft_size=args.FFT_size,
+                             step=args.step,
+                             jobs=args.jobs,
+                             fname=args.file)
 
     FA.analyze()
 

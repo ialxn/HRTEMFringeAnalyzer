@@ -662,7 +662,7 @@ class HRTEMFringeAnalyzer:
         ax.yaxis.set_visible(False)
 
         if outfname:
-            name, ext = outfname.rsplit('.',maxsplit=1)
+            name, ext = outfname.rsplit('.', maxsplit=1)
             outfname = name + '_' + datum_t + '.' + ext
         self.__do_plot(outfname)
         plt.close()
