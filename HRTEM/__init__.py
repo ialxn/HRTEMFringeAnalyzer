@@ -1,1 +1,1 @@
-from .crystalline import HRTEMFringeAnalyzer
+from .HRTEMFringeAnalyzer import HRTEMFringeAnalyzer
