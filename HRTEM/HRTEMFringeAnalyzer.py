@@ -302,6 +302,66 @@ def process_row(row, img, const1, const2, tune):
 __version__ = ''
 class HRTEMFringeAnalyzer:
     """
+    >>> from HRTEM import HRTEMFringeAnalyzer
+
+    >>> FA = HRTEMFringeAnalyzer(fft_size=64, step=32, jobs=4, fname='test.tif')
+
+    >>> print(FA.jobs)
+    4
+
+    >>> print(FA.step)
+    32
+
+    >>> print(FA.fft_size)
+    64
+
+    >>> FA.analyze()
+
+    >>> # print results
+    >>> FA.d
+    array([[ nan,  nan,  nan, ...,  nan,  nan,  nan],
+           [ nan,  nan,  nan, ...,  nan,  nan,  nan],
+           [ nan,  nan,  nan, ...,  nan,  nan,  nan],
+           ...,
+           [ nan,  nan,  nan, ...,  nan,  nan,  nan],
+           [ nan,  nan,  nan, ...,  nan,  nan,  nan],
+           [ nan,  nan,  nan, ...,  nan,  nan,  nan]])
+
+    >>> FA.summarize_data()
+    no finite values to plot
+    no finite values to plot
+
+    >>> FA.fft_size = 128
+
+    >>> FA.d    # Results have been invalidated
+
+    >>> print(FA.d)
+    None
+
+    >>> FA.analyze()    # Reevaluate
+
+    >>> FA.d
+    array([[ 25.58833813,  26.13036064,          nan, ...,          nan,
+                     nan,          nan],
+           [         nan,          nan,          nan, ...,          nan,
+                     nan,          nan],
+           [ 28.12283891,  28.76717216,  27.56026979, ...,          nan,
+                     nan,          nan],
+           ...,
+           [         nan,          nan,          nan, ...,          nan,
+                     nan,          nan],
+           [         nan,          nan,          nan, ...,          nan,
+                     nan,          nan],
+           [         nan,          nan,          nan, ...,          nan,
+                     nan,          nan]])
+
+    >>> FA.summarize_data('test128_b.pdf', limits_d=(15.0, 20.0))
+
+    >>> FA.save_data()    # Data saved as gzipped ASCII
+
+    >>> for result in (FA.d, FA.sigma_d, FA.phi, FA.sigma_phi):
+    ...:     FA.plot_overlayed(result)
+
     """
     class Constants:
         """Constants that depend on ``fft_size`` (and value of ``MIN_FREQUENCY`` only
