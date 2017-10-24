@@ -482,6 +482,10 @@ class HRTEMFringeAnalyzer:
         """
         from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+        if not np.isfinite(data).any():
+            print('no finite values to plot')
+            return
+
         img = this_ax.imshow(data, cmap='jet', vmin=limits[0], vmax=limits[1], origin='upper')
         # Create divider for existing axes instance
         divider = make_axes_locatable(this_ax)
