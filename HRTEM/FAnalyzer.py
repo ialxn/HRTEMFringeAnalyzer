@@ -46,7 +46,9 @@ def main():
         FA.save_data(compressed=True)
 
     FA.summarize_data(args.output)
+
     for result in (FA.d, FA.sigma_d, FA.phi, FA.sigma_phi):
         FA.plot_overlayed(result, outfname=args.Overlays)
+
 if __name__ == '__main__':
     main()

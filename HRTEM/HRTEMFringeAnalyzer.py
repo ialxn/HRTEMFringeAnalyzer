@@ -641,8 +641,10 @@ class HRTEMFringeAnalyzer:
         cax = ax.contourf(x, y, datum, alpha=0.5, cmap='jet', vmin=limits[0], vmax=limits[1])
         if datum is self.d:
             self.__finish_overlay(ax, cax, '$d$  [pixel]', r'spacing ($d$)')
+            datum_t = 'spacing'
         if datum is self.sigma_d:
             self.__finish_overlay(ax, cax, r'$1/\sigma_d$  [A.U.]', r'coherence ($1/\sigma_d$)')
+            datum_t = 'coherence'
         if datum is self.phi:
             ticks = np.linspace(0, np.pi, num=9, endpoint=True)
             labels = ['W', '', 'NW', '', 'N', '', 'NE', '', 'E']
@@ -651,13 +653,20 @@ class HRTEMFringeAnalyzer:
             cbar.ax.invert_yaxis()  # W at top, E at bottom
             cbar.set_label('direction  [-]')
             ax.set_title(r'direction ($\phi$)')
+            datum_t = 'direction'
         if datum is self.sigma_phi:
             self.__finish_overlay(ax, cax, r'$\sigma_\phi$  [A.U.]', r'$\sigma_d$  [$^\circ$]')
+            datum_t = 'spread'
 
         ax.xaxis.set_visible(False)
         ax.yaxis.set_visible(False)
 
+        if outfname:
+            name, ext = outfname.rsplit('.',maxsplit=1)
+            outfname = name + '_' + datum_t + '.' + ext
         self.__do_plot(outfname)
+        plt.close()
+
 
     def save_data(self, compressed=True):
         """Save data in (compressed) ASCII files
