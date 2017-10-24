@@ -428,6 +428,45 @@ class HRTEMFringeAnalyzer:
         except:
             raise ValueError("Could not read file {}".format(fname))
 
+    #
+    # use properties / setter to ensure that only valid results are visible
+    #
+    @property
+    def d(self):
+        if self.results_are_valid:
+            return self.__d
+
+    @d.setter
+    def d(self, value):
+        self.__d = value
+
+    @property
+    def sigma_d(self):
+        if self.results_are_valid:
+            return self.__sigma_d
+
+    @sigma_d.setter
+    def sigma_d(self, value):
+        self.__sigma_d = value
+
+    @property
+    def phi(self):
+        if self.results_are_valid:
+            return self.__phi
+
+    @phi.setter
+    def phi(self, value):
+        self.__phi = value
+
+    @property
+    def sigma_phi(self):
+        if self.results_are_valid:
+            return self.__sigma_phi
+
+    @sigma_phi.setter
+    def sigma_phi(self, value):
+        self.__sigma_phi = value
+
 
     @staticmethod
     def __sub_imageplot(data, this_ax, title, limits):
@@ -669,12 +708,16 @@ def main():
     print('start:\tFFT size {}\n\tstep {}'.format(H.fft_size, H.step))
     print('analyze')
     H.analyze()
+    print('print d matrix')
+    print(H.d)
     print('plot summary')
     H.summarize_data('test32.pdf')
     print('save')
     H.save_data(compressed=False)
     H.fft_size = 128
     print('reset FFT size:\tFFT size {}\n\t\tstep {}'.format(H.fft_size, H.step))
+    print('print d matrix')
+    print(H.d)
     print('plot summary')
     H.summarize_data('invalid.pdf')
     H.step = 30
