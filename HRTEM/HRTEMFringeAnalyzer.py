@@ -543,7 +543,7 @@ class HRTEMFringeAnalyzer:
         from mpl_toolkits.axes_grid1 import make_axes_locatable
 
         if not np.isfinite(data).any():
-            print('no finite values to plot')
+            print('no finite values to plot', file=sys.stderr)
             return
 
         img = this_ax.imshow(data, cmap='jet', vmin=limits[0], vmax=limits[1], origin='upper')
@@ -588,8 +588,8 @@ class HRTEMFringeAnalyzer:
             try:
                 plt.savefig(outfname)
             except ValueError:
-                print('Cannot save figure ({})'.format(outfname))
-                print('Supported formats: {}'.format(self.supported))
+                print('Cannot save figure ({})'.format(outfname), file=sys.stderr)
+                print('Supported formats: {}'.format(self.supported), file=sys.stderr)
                 plt.show()
 
     def summarize_data(self, outfname=None,
