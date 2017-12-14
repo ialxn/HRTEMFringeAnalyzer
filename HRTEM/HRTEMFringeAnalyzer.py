@@ -421,8 +421,8 @@ class HRTEMFringeAnalyzer:
         self.supported = ','.join(plt.figure().canvas.get_supported_filetypes())
         plt.close()
 
-        self.fft_size = fft_size
-        self.step = step
+        self._fft_size = fft_size
+        self._step = step
         self.jobs = jobs
 
         self.tuned = self.TuningParameters(fft_size // 2)
