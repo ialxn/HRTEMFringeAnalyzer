@@ -456,11 +456,11 @@ class HRTEMFringeAnalyzer:
 
     @property
     def fft_size(self):
-        return self.__fft_size
+        return self._fft_size
 
     @fft_size.setter
     def fft_size(self, fft_size):
-        self.__fft_size = fft_size
+        self._fft_size = fft_size
         try:
             self.__update_precalc()
         except AttributeError:
@@ -468,22 +468,22 @@ class HRTEMFringeAnalyzer:
 
     @property
     def step(self):
-        return self.__step
+        return self._step
 
     @step.setter
     def step(self, step):
         self.results_are_valid = False
-        self.__step = step
+        self._step = step
 
     @property
     def image_fname(self):
-        return self.__image_fname
+        return self._image_fname
 
     @image_fname.setter
     def image_fname(self, fname):
         try:
             self.image_data = imread(fname, mode='I')
-            self.__image_fname = fname
+            self._image_fname = fname
             self.results_are_valid = False
         except:
             raise ValueError("Could not read file {}".format(fname))
@@ -494,38 +494,38 @@ class HRTEMFringeAnalyzer:
     @property
     def d(self):
         if self.results_are_valid:
-            return self.__d
+            return self._d
 
     @d.setter
     def d(self, value):
-        self.__d = value
+        self._d = value
 
     @property
     def sigma_d(self):
         if self.results_are_valid:
-            return self.__sigma_d
+            return self._sigma_d
 
     @sigma_d.setter
     def sigma_d(self, value):
-        self.__sigma_d = value
+        self._sigma_d = value
 
     @property
     def phi(self):
         if self.results_are_valid:
-            return self.__phi
+            return self._phi
 
     @phi.setter
     def phi(self, value):
-        self.__phi = value
+        self._phi = value
 
     @property
     def sigma_phi(self):
         if self.results_are_valid:
-            return self.__sigma_phi
+            return self._sigma_phi
 
     @sigma_phi.setter
     def sigma_phi(self, value):
-        self.__sigma_phi = value
+        self._sigma_phi = value
 
 
     @staticmethod
