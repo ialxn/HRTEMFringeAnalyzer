@@ -442,7 +442,7 @@ class HRTEMFringeAnalyzer:
         ``results_are_valid = False``.
         This is used in ``__init__()`` and is triggered by the ``fft_size`` setter.
         """
-        fft_size2 = self.fft_size // 2
+        fft_size2 = self._fft_size // 2
         self.tuned.MAX_FREQUENCY2 = fft_size2**2
 
         try:
@@ -450,7 +450,7 @@ class HRTEMFringeAnalyzer:
         except AttributeError:
             pass
 
-        self.constant = self.Constants(self.fft_size, self.tuned.MIN_FREQUENCY2)
+        self.constant = self.Constants(self._fft_size, self.tuned.MIN_FREQUENCY2)
         self.results_are_valid = False
 
 
