@@ -425,14 +425,10 @@ class HRTEMFringeAnalyzer:
         self._step = step
         self.jobs = jobs
 
+        self.image_fname = fname
+
         self.tuned = self.TuningParameters(fft_size // 2)
         self.__update_precalc()
-
-        try:
-            self.image_data = imread(fname, mode='I')
-            self.image_fname = fname
-        except:
-            raise ValueError("Could not read file {}".format(fname))
 
 
     def __update_precalc(self):
