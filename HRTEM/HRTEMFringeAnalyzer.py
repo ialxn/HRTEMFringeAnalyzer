@@ -442,6 +442,8 @@ class HRTEMFringeAnalyzer:
         self.tuned.MAX_FREQUENCY2 = fft_size2**2
 
         try:
+            # delete old constants first.
+            # constants are not yet defined when called during __init__
             del self.constant
         except AttributeError:
             pass
@@ -457,10 +459,7 @@ class HRTEMFringeAnalyzer:
     @fft_size.setter
     def fft_size(self, fft_size):
         self._fft_size = fft_size
-        try:
-            self.__update_precalc()
-        except AttributeError:
-            pass
+        self.__update_precalc()
 
     @property
     def step(self):
