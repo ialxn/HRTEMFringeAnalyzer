@@ -428,26 +428,20 @@ class HRTEMFringeAnalyzer:
         self.image_fname = fname
 
         self.tuned = self.TuningParameters(fft_size // 2)
-        self.__update_precalc()
+        self.constant = self.Constants(fft_size, self.tuned.MIN_FREQUENCY2)
+        self.results_are_valid = False
 
 
     def __update_precalc(self):
         """
         Updates/sets all attributes that depend on ``self.fft_size``. This includes
-        all attributes of ``Constants``. Then invalidates results by setting
-        ``results_are_valid = False``.
-        This is used in ``__init__()`` and is triggered by the ``fft_size`` setter.
+        all attributes of ``Constants`` which are delete and then initialized new.
+        Finally, results are invalidated by setting ``results_are_valid = False``.
+        This is triggered by the ``fft_size`` setter.
         """
         fft_size2 = self._fft_size // 2
         self.tuned.MAX_FREQUENCY2 = fft_size2**2
-
-        try:
-            # delete old constants first.
-            # constants are not yet defined when called during __init__
-            del self.constant
-        except AttributeError:
-            pass
-
+        del self.constant
         self.constant = self.Constants(self._fft_size, self.tuned.MIN_FREQUENCY2)
         self.results_are_valid = False
 
