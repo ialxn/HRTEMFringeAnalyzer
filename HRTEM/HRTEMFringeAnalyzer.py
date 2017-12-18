@@ -69,6 +69,13 @@ def process_row(row, img, const1, const2, tune):
                 frequencies (indices above FFT_SIZE2)
             han2d : np.array
                 2D Hanning window applied to roi before the 2D FFT
+        tune : tuple of
+            NOISE : float
+                noise floor defined as mean + ``TUNE_NOISE`` * sigma
+            THRESHOLD_PERIOD : float
+                threshold value to discriminate noise peaks
+            THRESHOLD_DIRECTION : float
+                threshold value to discriminate noise peaks
 
     Returns
         tuple of np arrays of length ``Ncols``
@@ -89,6 +96,8 @@ def process_row(row, img, const1, const2, tune):
                 Window to be analyzed
             r2 : np.array
                 squared distances of data points to center of ``s``
+            TUNE_NOISE : float
+                tunig parameter to define noise floor
 
         Ad-hoc definition of the noise floor:
             + use all data in cornes of 2D FFT (i.e. outside of circle
