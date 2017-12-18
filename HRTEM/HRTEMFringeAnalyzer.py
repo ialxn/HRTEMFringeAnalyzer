@@ -42,7 +42,7 @@ def __gaussian(x, *p):
     return A * np.exp(-factor*((x - x_0) / sigma)**2) + offset
 
 
-def process_row(row, img, const1, const2, tune):
+def process_row(row, img, const1, constant, tune):
     """
     Analyzes horizontal row ``row`` in image ``img``
 
@@ -57,7 +57,7 @@ def process_row(row, img, const1, const2, tune):
             step : int
                 Horizontal (and vertical) step size to translate
                 window
-        const2 : tuple of
+        constant : Constants
             r2 : np.array
                 squared distances of each pixel in the 2D FFT relative to the one
                 that represents the zero frequency
@@ -69,7 +69,7 @@ def process_row(row, img, const1, const2, tune):
                 frequencies (indices above FFT_SIZE2)
             han2d : np.array
                 2D Hanning window applied to roi before the 2D FFT
-        tune : tuple of
+        tune : TuningParameters
             NOISE : float
                 noise floor defined as mean + ``TUNE_NOISE`` * sigma
             THRESHOLD_PERIOD : float
@@ -270,8 +270,6 @@ def process_row(row, img, const1, const2, tune):
     #begin ``process_row``
     #
     fft_size, step = const1
-    r2, alpha, mask, han2d = const2
-    TUNE_NOISE, TUNE_THRESHOLD_PERIOD, TUNE_THRESHOLD_DIRECTION = tune
     fft_size2 = fft_size // 2
     Ncols = int(np.ceil((img.shape[1] - fft_size) / step))
     d = np.zeros([Ncols])
@@ -289,18 +287,18 @@ def process_row(row, img, const1, const2, tune):
         roi = (roi + roi.min()) / roi.max()
         roi -= roi.mean()
 
-        power_spectrum = fftshift(np.abs(fft2(han2d * roi)**2))
+        power_spectrum = fftshift(np.abs(fft2(constant.han2d * roi)**2))
 
         # set very low and very high frequencies to zero (mask)
         # set to zero all frequencies with power smaller than noise floor
-        power_spectrum[mask] = 0
-        power_spectrum[power_spectrum <= noise_floor(power_spectrum, r2, TUNE_NOISE)] = 0
+        power_spectrum[constant.mask] = 0
+        power_spectrum[power_spectrum <= noise_floor(power_spectrum, constant.r2, tune.NOISE)] = 0
         power_spectrum[power_spectrum is 0] = np.nan
 
-        d[idx], sigma_d[idx] = analyze_lattice_const(power_spectrum, r2,
-                                                     TUNE_THRESHOLD_PERIOD)
-        phi[idx], sigma_phi[idx] = analyze_direction(power_spectrum, r2, alpha,
-                                                     TUNE_THRESHOLD_DIRECTION)
+        d[idx], sigma_d[idx] = analyze_lattice_const(power_spectrum, constant.r2,
+                                                     tune.THRESHOLD_PERIOD)
+        phi[idx], sigma_phi[idx] = analyze_direction(power_spectrum, constant.r2, constant.alpha,
+                                                     tune.THRESHOLD_DIRECTION)
 
     return (d, sigma_d, phi, sigma_phi)
 
@@ -437,6 +435,7 @@ class HRTEMFringeAnalyzer:
         self.image_fname = fname
 
         self.tuned = self.TuningParameters(fft_size // 2)
+
         self.constant = self.Constants(fft_size, self.tuned.MIN_FREQUENCY2)
         self.results_are_valid = False
 
@@ -720,13 +719,8 @@ class HRTEMFringeAnalyzer:
             res = parallel(delayed(process_row)(row,
                                                 self.image_data,
                                                 (self.fft_size, self.step),
-                                                (self.constant.r2,
-                                                 self.constant.alpha,
-                                                 self.constant.mask,
-                                                 self.constant.han2d),
-                                                (self.tuned.NOISE,
-                                                 self.tuned.THRESHOLD_PERIOD,
-                                                 self.tuned.THRESHOLD_DIRECTION))
+                                                self.constant,
+                                                self.tuned)
                            for row in range(fft_size2,
                                             self.image_data.shape[0] - fft_size2,
                                             self.step))
