@@ -432,12 +432,18 @@ class HRTEMFringeAnalyzer:
         self._step = step
         self.jobs = jobs
 
-        self.image_fname = fname
+        self.image_data = None
+        self.image_fname = fname # setter used that checks for valid filename / -data
 
         self.tuned = self.TuningParameters(fft_size // 2)
 
         self.constant = self.Constants(fft_size, self.tuned.MIN_FREQUENCY2)
         self.results_are_valid = False
+
+        self._d = None
+        self._sigma_d = None
+        self._phi = None
+        self._sigma_phi = None
 
 
     def __update_precalc(self):
