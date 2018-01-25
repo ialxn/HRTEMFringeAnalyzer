@@ -82,7 +82,7 @@ def process_row(row, img, const1, constant, tune):
         d : np array
             Period found
         sigma_d : np array
-            Coherence length (length of periodic structure) as 1/sigma [A.U.]
+            Coherence length (length of periodic structure) as 1/sigma [1/pixel]
         phi : np array
             Direction of lattice (direction) vector of periodic structure
         sigma_phi : np array
@@ -174,7 +174,7 @@ def process_row(row, img, const1, constant, tune):
             d : float
                 Period found
             sigma_d : float
-                Coherence length (length of periodic structure) as A.U.
+                Coherence length (length of periodic structure) as 1/pixel
                 """
         bins = power_spectrum.shape[0] // 2  # ad hoc definition
         # build histogram (power as function of radius, bin edges are radius in pixels)
@@ -569,9 +569,9 @@ class HRTEMFringeAnalyzer:
             if title == r'spacing ($d$)':
                 cbar.set_label('$d$  [pixel]')
             if title == r'coherence ($1/\sigma_d$)':
-                cbar.set_label(r'$1/\sigma_d$  [A.U.]')
+                cbar.set_label(r'$1/\sigma_d$  [1/pixel]')
             if title == r'spread ($\sigma_\phi$)':
-                cbar.set_label(r'$\sigma_d$  [$^\circ$]')
+                cbar.set_label(r'$\sigma_\phi$  [$^\circ$]')
 
         this_ax.set_title(title)
         this_ax.xaxis.set_visible(False)
@@ -646,7 +646,7 @@ class HRTEMFringeAnalyzer:
             self.__finish_overlay(ax, cax, '$d$  [pixel]', r'spacing ($d$)')
             datum_t = 'spacing'
         if datum is self.sigma_d:
-            self.__finish_overlay(ax, cax, r'$1/\sigma_d$  [A.U.]', r'coherence ($1/\sigma_d$)')
+            self.__finish_overlay(ax, cax, r'$1/\sigma_d$  [1/pixel]', r'coherence ($1/\sigma_d$)')
             datum_t = 'coherence'
         if datum is self.phi:
             ticks = np.linspace(0, np.pi, num=9, endpoint=True)
@@ -658,7 +658,7 @@ class HRTEMFringeAnalyzer:
             ax.set_title(r'direction ($\phi$)')
             datum_t = 'direction'
         if datum is self.sigma_phi:
-            self.__finish_overlay(ax, cax, r'$\sigma_\phi$  [A.U.]', r'$\sigma_d$  [$^\circ$]')
+            self.__finish_overlay(ax, cax, r'$\sigma_\phi$  [$^\circ$]', r'$\sigma_\phi$  [$^\circ$]')
             datum_t = 'spread'
 
         ax.xaxis.set_visible(False)
