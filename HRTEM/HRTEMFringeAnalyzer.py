@@ -498,7 +498,7 @@ class HRTEMFringeAnalyzer:
     @image_fname.setter
     def image_fname(self, fname):
         try:
-            self.image_data = imread(fname, mode='I')
+            self.image_data = imread(fname)
             self._image_fname = fname
             self.results_are_valid = False
         except:
