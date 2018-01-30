@@ -14,7 +14,7 @@ from numpy.fft import fft2, fftshift
 
 import matplotlib.pyplot as plt
 
-from scipy.misc import imread
+from imageio import imread
 from scipy.optimize import curve_fit, OptimizeWarning
 
 from numba import jit
