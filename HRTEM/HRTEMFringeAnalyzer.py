@@ -653,7 +653,7 @@ class HRTEMFringeAnalyzer:
         ax.imshow(self.image_data, extent=None, aspect='equal', cmap='gray')
         x = np.arange(fft_size2, self.image_data.shape[1] - fft_size2, self.step)
         y = np.arange(fft_size2, self.image_data.shape[0] - fft_size2, self.step)
-        cax = ax.contourf(x, y, datum, alpha=0.5, cmap='jet', vmin=limits[0], vmax=limits[1])
+        cax = ax.contourf(x, y, datum, alpha=0.2, cmap='jet', vmin=limits[0], vmax=limits[1])
         if datum is self.d:
             self.__finish_overlay(ax, cax, '$d$  [pixel]', r'spacing ($d$)')
             datum_t = 'spacing'
