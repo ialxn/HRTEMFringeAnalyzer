@@ -306,7 +306,6 @@ def process_row(row, img, const1, constant, tune):
         # set to zero all frequencies with power smaller than noise floor
         power_spectrum[constant.mask] = 0
         power_spectrum[power_spectrum <= noise_floor(power_spectrum, constant.r2, tune.NOISE)] = 0
-        power_spectrum[power_spectrum is 0] = np.nan
 
         d[idx], sigma_d[idx] = analyze_lattice_const(power_spectrum, constant.r2,
                                                      tune.THRESHOLD_PERIOD)
