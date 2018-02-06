@@ -318,7 +318,7 @@ def process_row(row, img, const1, constant, tune):
 
 
 
-__version__ = ''
+__version__ = 'v2.2'
 class HRTEMFringeAnalyzer:
     """
     >>> from HRTEM import HRTEMFringeAnalyzer
