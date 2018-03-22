@@ -80,7 +80,7 @@ $ python setup.py install
 
 FAnalyzer is a small stand-alone program provided (utils) to perform the analysis
 
-```bash
+```
 $ FAnalyzer.py -h
 GLib-GIO-Message: Using the 'memory' GSettings backend.  Your settings will not be saved or shared with other applications.
 usage: FAnalyzer.py [-h] -f FILE [-F N] [-j N] [-s S] [-S] [-o FILE] [-O FILE]
