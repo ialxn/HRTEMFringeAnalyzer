@@ -106,4 +106,4 @@ optional arguments:
 
 ## Reference
 
-[1] I. Alxneit, HRTEMFringeAnalyzer a free python module for a automated analysis of fringe pattern in transmission electron micrographs, Journal of Microscopy (submitted)
+[1] I. Alxneit, HRTEMFringeAnalyzer a free python module for a automated analysis of fringe pattern in transmission electron micrographs, J. Microsc. 2018, 271(1), 62 (doi: 10.1111/jmi.12695).
